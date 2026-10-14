@@ -1,25 +1,45 @@
 import SwiftUI
 import HodorCore
 
+/// Discovery result for one host.
+struct HostServers {
+    var servers: [DevServer] = []
+    var error: String?
+    var isLoading = false
+}
+
 struct ContentView: View {
     @Bindable var store: ProjectStore
     var tunnels: TunnelManager
 
-    @State private var servers: [DevServer] = []
-    @State private var isLoading = false
-    @State private var discoveryError: String?
+    @State private var discovery: [String: HostServers] = [:]
     @State private var editing: Project?
     @State private var isAdding = false
+    @State private var showHosts = false
+
+    private var isLoading: Bool {
+        discovery.values.contains { $0.isLoading }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
 
-            if let discoveryError {
-                Text(discoveryError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .textSelection(.enabled)
+            if showHosts {
+                HostsView(store: store, discovery: discovery, onAdd: { host in
+                    store.addHost(host)
+                    Task { await refresh(host) }
+                })
+                Divider()
+            } else {
+                ForEach(store.hosts, id: \.self) { host in
+                    if let error = discovery[host]?.error {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .textSelection(.enabled)
+                    }
+                }
             }
 
             if store.projects.isEmpty && !isAdding {
@@ -36,7 +56,8 @@ struct ContentView: View {
                 } else {
                     ProjectRow(
                         project: $project,
-                        servers: servers,
+                        hosts: store.hosts,
+                        discovery: discovery,
                         status: tunnels.status(for: project),
                         onToggle: { store.setActive($0, for: project.id) },
                         onEdit: { editing = project },
@@ -62,36 +83,50 @@ struct ContentView: View {
         }
         .padding()
         .frame(width: 420)
-        .task { await refresh() }
+        .task { await refreshAll() }
     }
 
     private var header: some View {
         HStack {
             Text("Hodor").font(.headline)
-            Text(store.host).foregroundStyle(.secondary)
             Spacer()
             if isLoading {
                 ProgressView().controlSize(.small)
             }
             Button {
-                Task { await refresh() }
+                showHosts.toggle()
+            } label: {
+                Image(systemName: showHosts ? "server.rack.fill" : "server.rack")
+            }
+            .buttonStyle(.borderless)
+            .help("Hosts")
+            Button {
+                Task { await refreshAll() }
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
-            .help("Reload dev servers from \(store.host)")
+            .help("Reload dev servers from all hosts")
             .disabled(isLoading)
         }
     }
 
-    private func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
+    /// Queries all hosts in parallel; a slow or unreachable host doesn't hold up the others.
+    private func refreshAll() async {
+        await withTaskGroup(of: Void.self) { group in
+            for host in store.hosts {
+                group.addTask { await refresh(host) }
+            }
+        }
+    }
+
+    private func refresh(_ host: String) async {
+        discovery[host, default: HostServers()].isLoading = true
         do {
-            servers = try await DevServerDiscovery.discover(host: store.host)
-            discoveryError = nil
+            let servers = try await DevServerDiscovery.discover(host: host)
+            discovery[host] = HostServers(servers: servers)
         } catch {
-            discoveryError = "Could not list servers on \(store.host): \(error.localizedDescription)"
+            discovery[host] = HostServers(servers: [], error: error.localizedDescription)
         }
     }
 }

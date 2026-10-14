@@ -3,7 +3,8 @@ import HodorCore
 
 struct ProjectRow: View {
     @Binding var project: Project
-    var servers: [DevServer]
+    var hosts: [String]
+    var discovery: [String: HostServers]
     var status: TunnelStatus
     var onToggle: @MainActor @Sendable (Bool) -> Void
     var onEdit: () -> Void
@@ -34,16 +35,23 @@ struct ProjectRow: View {
                 Toggle("", isOn: Binding(get: { project.isActive }, set: onToggle))
                     .toggleStyle(.switch)
                     .labelsHidden()
-                    .disabled(project.remotePort == nil || project.localPort == nil)
+                    .disabled(!project.hasServer || project.localPort == nil)
             }
 
-            Picker("Server", selection: $project.remotePort) {
-                Text("None").tag(Int?.none)
-                if let port = project.remotePort, !servers.contains(where: { $0.port == port }) {
-                    Text(":\(port) (not found)").tag(Int?.some(port))
+            Picker("Server", selection: selection) {
+                Text("None").tag(ServerRef?.none)
+                if let selected = selection.wrappedValue, !isDiscovered(selected) {
+                    Text(label(host: selected.host, port: selected.port) + " (not found)").tag(ServerRef?.some(selected))
                 }
-                ForEach(servers) { server in
-                    Text(label(for: server)).tag(Int?.some(server.port))
+                ForEach(hosts, id: \.self) { host in
+                    let servers = discovery[host]?.servers ?? []
+                    if !servers.isEmpty {
+                        Divider()
+                    }
+                    ForEach(servers) { server in
+                        Text(label(host: host, port: server.port, server: server))
+                            .tag(ServerRef?.some(ServerRef(host: host, port: server.port)))
+                    }
                 }
             }
             .labelsHidden()
@@ -66,10 +74,35 @@ struct ProjectRow: View {
         return Circle().fill(color).frame(width: 8, height: 8)
     }
 
-    private func label(for server: DevServer) -> String {
-        var parts = [":\(server.port)"]
-        if let process = server.process, !process.isEmpty { parts.append(process) }
-        if let directory = server.directory, !directory.isEmpty { parts.append(abbreviate(directory)) }
+    /// Host and port of the selected dev server, as one picker value.
+    private struct ServerRef: Hashable {
+        var host: String
+        var port: Int
+    }
+
+    private var selection: Binding<ServerRef?> {
+        Binding(
+            get: {
+                guard let host = project.host, let port = project.remotePort else { return nil }
+                return ServerRef(host: host, port: port)
+            },
+            set: {
+                project.host = $0?.host
+                project.remotePort = $0?.port
+            }
+        )
+    }
+
+    private func isDiscovered(_ ref: ServerRef) -> Bool {
+        discovery[ref.host]?.servers.contains { $0.port == ref.port } ?? false
+    }
+
+    /// The host is only shown when there is more than one to choose from.
+    private func label(host: String, port: Int, server: DevServer? = nil) -> String {
+        var parts = hosts.count > 1 ? [host] : []
+        parts.append(":\(port)")
+        if let process = server?.process, !process.isEmpty { parts.append(process) }
+        if let directory = server?.directory, !directory.isEmpty { parts.append(abbreviate(directory)) }
         return parts.joined(separator: "  ·  ")
     }
 
