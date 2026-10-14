@@ -23,7 +23,7 @@ public struct Project: Codable, Identifiable, Hashable, Sendable {
     }
 
     public static func localPort(of url: String) -> Int? {
-        guard let components = URLComponents(string: url), components.host != nil else { return nil }
+        guard let components = URLComponents(string: url), let host = components.host, !host.isEmpty else { return nil }
         if let port = components.port { return port }
         switch components.scheme?.lowercased() {
         case "https": return 443

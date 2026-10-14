@@ -7,15 +7,129 @@ import Observation
 public final class TunnelManager {
     public private(set) var statuses: [UUID: TunnelStatus] = [:]
 
+    private struct Spec: Equatable {
+        var localPort: Int
+        var remotePort: Int
+        var host: String
+    }
+
+    /// One entry per desired tunnel. `process` is nil while waiting for a retry.
+    private struct Tunnel {
+        var spec: Spec
+        var process: Process?
+        var retry: Task<Void, Never>?
+    }
+
+    @ObservationIgnored private var tunnels: [UUID: Tunnel] = [:]
+
+    static let retryDelay: Duration = .seconds(5)
+
     public init() {}
 
     public func status(for project: Project) -> TunnelStatus {
         statuses[project.id] ?? .inactive
     }
 
-    // STUB: implemented in work package 2.
     /// Starts, restarts or stops tunnels so that exactly the active projects with a selected server are forwarded.
-    public func sync(projects: [Project], host: String) {}
+    public func sync(projects: [Project], host: String) {
+        var desired: [UUID: Spec] = [:]
+        for project in projects where project.isActive {
+            if let local = project.localPort, let remote = project.remotePort {
+                desired[project.id] = Spec(localPort: local, remotePort: remote, host: host)
+            }
+        }
+        for (id, tunnel) in tunnels where desired[id] != tunnel.spec {
+            stop(id)
+        }
+        for (id, spec) in desired where tunnels[id] == nil {
+            start(id, spec)
+        }
+    }
 
-    public func stopAll() {}
+    public func stopAll() {
+        for id in Array(tunnels.keys) {
+            stop(id)
+        }
+    }
+
+    private func start(_ id: UUID, _ spec: Spec) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+        process.arguments = [
+            "-N", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+            "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
+            "-L", "\(spec.localPort):localhost:\(spec.remotePort)", spec.host,
+        ]
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        let stderr = Pipe()
+        process.standardError = stderr
+        let buffer = StderrBuffer()
+        stderr.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty {
+                handle.readabilityHandler = nil
+            } else {
+                buffer.append(data)
+            }
+        }
+        let processID = ObjectIdentifier(process)
+        process.terminationHandler = { [weak self] process in
+            let code = process.terminationStatus
+            Task { @MainActor in
+                self?.processExited(id, processID, message: buffer.lastLine ?? "ssh exited with code \(code)")
+            }
+        }
+
+        tunnels[id] = Tunnel(spec: spec, process: process)
+        do {
+            try process.run()
+            statuses[id] = .running
+        } catch {
+            fail(id, message: error.localizedDescription)
+        }
+    }
+
+    private func stop(_ id: UUID) {
+        guard let tunnel = tunnels.removeValue(forKey: id) else { return }
+        tunnel.retry?.cancel()
+        // Removing the entry first makes `processExited` ignore this termination.
+        tunnel.process?.terminate()
+        statuses[id] = nil
+    }
+
+    private func processExited(_ id: UUID, _ processID: ObjectIdentifier, message: String) {
+        // Ignore processes that were stopped or replaced in the meantime.
+        guard let process = tunnels[id]?.process, ObjectIdentifier(process) == processID else { return }
+        fail(id, message: message)
+    }
+
+    /// Marks the tunnel as failed and retries after a delay as long as it is still desired.
+    private func fail(_ id: UUID, message: String) {
+        statuses[id] = .failed(message)
+        tunnels[id]?.process = nil
+        tunnels[id]?.retry = Task { [weak self] in
+            try? await Task.sleep(for: Self.retryDelay)
+            guard !Task.isCancelled, let self, let tunnel = self.tunnels[id], tunnel.process == nil else { return }
+            self.start(id, tunnel.spec)
+        }
+    }
+}
+
+/// Collects stderr output from a background thread.
+private final class StderrBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var text = ""
+
+    func append(_ data: Data) {
+        lock.withLock { text += String(decoding: data, as: UTF8.self) }
+    }
+
+    var lastLine: String? {
+        lock.withLock {
+            text.split(whereSeparator: \.isNewline)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .last { !$0.isEmpty }
+        }
+    }
 }
