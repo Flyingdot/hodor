@@ -1,20 +1,28 @@
 import Foundation
 
-/// A fixed local URL (e.g. https://localhost:4200) that gets forwarded to one dev server on the remote host.
+/// A fixed local URL (e.g. https://localhost:4200) that gets forwarded to one dev server on a remote host.
 public struct Project: Codable, Identifiable, Hashable, Sendable {
     public var id: UUID
     public var name: String
     public var url: String
-    /// Port of the selected dev server on the remote host.
+    /// ssh host of the selected dev server.
+    public var host: String?
+    /// Port of the selected dev server on `host`.
     public var remotePort: Int?
     public var isActive: Bool
 
-    public init(id: UUID = UUID(), name: String, url: String, remotePort: Int? = nil, isActive: Bool = false) {
+    public init(id: UUID = UUID(), name: String, url: String, host: String? = nil, remotePort: Int? = nil, isActive: Bool = false) {
         self.id = id
         self.name = name
         self.url = url
+        self.host = host
         self.remotePort = remotePort
         self.isActive = isActive
+    }
+
+    /// Whether a dev server is selected, i.e. the project can be activated.
+    public var hasServer: Bool {
+        host != nil && remotePort != nil
     }
 
     /// Local port taken from the URL. Falls back to the scheme's default port.

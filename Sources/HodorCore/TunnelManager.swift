@@ -31,10 +31,10 @@ public final class TunnelManager {
     }
 
     /// Starts, restarts or stops tunnels so that exactly the active projects with a selected server are forwarded.
-    public func sync(projects: [Project], host: String) {
+    public func sync(projects: [Project]) {
         var desired: [UUID: Spec] = [:]
         for project in projects where project.isActive {
-            if let local = project.localPort, let remote = project.remotePort {
+            if let local = project.localPort, let remote = project.remotePort, let host = project.host {
                 desired[project.id] = Spec(localPort: local, remotePort: remote, host: host)
             }
         }

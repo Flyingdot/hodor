@@ -27,6 +27,6 @@ final class AppModel {
     }
 
     private func sync() {
-        tunnels.sync(projects: store.projects, host: store.host)
+        tunnels.sync(projects: store.projects)
     }
 }

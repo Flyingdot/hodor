@@ -6,8 +6,8 @@ import Testing
 struct TunnelManagerTests {
     @Test func unresolvableHostFails() async throws {
         let manager = TunnelManager()
-        let project = Project(name: "A", url: "http://localhost:14299", remotePort: 3780, isActive: true)
-        manager.sync(projects: [project], host: "hodor-test.invalid")
+        let project = Project(name: "A", url: "http://localhost:14299", host: "hodor-test.invalid", remotePort: 3780, isActive: true)
+        manager.sync(projects: [project])
         #expect(manager.status(for: project) == .running)
 
         for _ in 0..<100 where manager.status(for: project) == .running {
@@ -19,16 +19,18 @@ struct TunnelManagerTests {
         }
         #expect(message.contains("hodor-test.invalid"))
 
-        manager.sync(projects: [], host: "hodor-test.invalid")
+        manager.sync(projects: [])
         #expect(manager.status(for: project) == .inactive)
     }
 
     @Test func inactiveOrIncompleteProjectsAreNotStarted() {
         let manager = TunnelManager()
-        let inactive = Project(name: "A", url: "http://localhost:14299", remotePort: 3780)
+        let host = "hodor-test.invalid"
+        let inactive = Project(name: "A", url: "http://localhost:14299", host: host, remotePort: 3780)
         let noServer = Project(name: "B", url: "http://localhost:14298", isActive: true)
-        let badURL = Project(name: "C", url: "nope", remotePort: 3780, isActive: true)
-        manager.sync(projects: [inactive, noServer, badURL], host: "hodor-test.invalid")
+        let noHost = Project(name: "C", url: "http://localhost:14297", remotePort: 3780, isActive: true)
+        let badURL = Project(name: "D", url: "nope", host: host, remotePort: 3780, isActive: true)
+        manager.sync(projects: [inactive, noServer, noHost, badURL])
         #expect(manager.statuses.isEmpty)
     }
 }

@@ -21,16 +21,64 @@ struct ProjectStoreTests {
 
     @Test func persistsAndReloads() {
         let store = ProjectStore(fileURL: fileURL)
-        store.host = "example"
-        store.projects = [Project(name: "A", url: "https://localhost:4200", remotePort: 4201)]
+        store.addHost("example")
+        store.projects = [Project(name: "A", url: "https://localhost:4200", host: "example", remotePort: 4201)]
 
         let reloaded = ProjectStore(fileURL: fileURL)
 
-        #expect(reloaded.host == "example")
+        #expect(reloaded.hosts == ["winterfell", "example"])
         #expect(reloaded.projects == store.projects)
     }
 
     @Test func defaultsToWinterfell() {
-        #expect(ProjectStore(fileURL: fileURL).host == "winterfell")
+        #expect(ProjectStore(fileURL: fileURL).hosts == ["winterfell"])
+    }
+
+    @Test func migratesSingleHostConfig() throws {
+        let legacy = """
+        {
+          "host" : "castle-black",
+          "projects" : [
+            { "id" : "711EC1AE-2CAE-4D8C-A207-DFBD19F09196", "isActive" : true, "name" : "A",
+              "remotePort" : 4200, "url" : "https://localhost:4200" },
+            { "id" : "22222222-2222-2222-2222-222222222222", "isActive" : false, "name" : "B",
+              "url" : "https://localhost:4300" }
+          ]
+        }
+        """
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(legacy.utf8).write(to: fileURL)
+
+        let store = ProjectStore(fileURL: fileURL)
+
+        #expect(store.hosts == ["castle-black"])
+        #expect(store.projects.map(\.host) == ["castle-black", nil])
+        #expect(store.projects[0].isActive)
+    }
+
+    @Test func addHostIgnoresBlanksAndDuplicates() {
+        let store = ProjectStore(fileURL: fileURL)
+        store.addHost(" castle-black ")
+        store.addHost("castle-black")
+        store.addHost("winterfell")
+        store.addHost("  ")
+
+        #expect(store.hosts == ["winterfell", "castle-black"])
+    }
+
+    @Test func removeHostDeselectsItsProjects() {
+        let store = ProjectStore(fileURL: fileURL)
+        store.addHost("castle-black")
+        store.projects = [
+            Project(name: "A", url: "https://localhost:4200", host: "castle-black", remotePort: 4201, isActive: true),
+            Project(name: "B", url: "https://localhost:4300", host: "winterfell", remotePort: 4301, isActive: true),
+        ]
+
+        store.removeHost("castle-black")
+
+        #expect(store.hosts == ["winterfell"])
+        #expect(store.projects[0].hasServer == false)
+        #expect(store.projects[0].isActive == false)
+        #expect(store.projects[1].isActive)
     }
 }

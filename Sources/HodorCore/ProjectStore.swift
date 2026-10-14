@@ -2,15 +2,17 @@ import Foundation
 import Observation
 
 struct Config: Codable {
-    var host: String
+    var hosts: [String]?
+    /// Single host of configs written before multi-host support. Only read, never written.
+    var host: String?
     var projects: [Project]
 }
 
-/// Persists the remote host and project list as JSON in ~/Library/Application Support/Hodor.
+/// Persists the ssh hosts and project list as JSON in ~/Library/Application Support/Hodor.
 @MainActor
 @Observable
 public final class ProjectStore {
-    public var host: String { didSet { save() } }
+    public private(set) var hosts: [String] { didSet { save() } }
     public var projects: [Project] { didSet { save() } }
     /// Called after every change, once it is saved.
     @ObservationIgnored public var onChange: (() -> Void)?
@@ -20,8 +22,35 @@ public final class ProjectStore {
     public init(fileURL: URL = ProjectStore.defaultFileURL) {
         self.fileURL = fileURL
         let config = (try? Data(contentsOf: fileURL)).flatMap { try? JSONDecoder().decode(Config.self, from: $0) }
-        host = config?.host ?? "winterfell"
-        projects = config?.projects ?? []
+        let legacyHost = config?.host ?? "winterfell"
+        hosts = config?.hosts ?? [legacyHost]
+        projects = (config?.projects ?? []).map { project in
+            var project = project
+            if project.host == nil && project.remotePort != nil {
+                project.host = legacyHost
+            }
+            return project
+        }
+    }
+
+    /// Adds an ssh host (an alias from ~/.ssh/config or a hostname). Ignores blanks and duplicates.
+    public func addHost(_ host: String) {
+        let host = host.trimmingCharacters(in: .whitespaces)
+        guard !host.isEmpty, !hosts.contains(host) else { return }
+        hosts.append(host)
+    }
+
+    /// Removes a host and deselects it from all projects, which stops their tunnels.
+    public func removeHost(_ host: String) {
+        projects = projects.map { project in
+            guard project.host == host else { return project }
+            var project = project
+            project.host = nil
+            project.remotePort = nil
+            project.isActive = false
+            return project
+        }
+        hosts.removeAll { $0 == host }
     }
 
     /// Activates or deactivates a project. Activating turns off other projects on the same local port,
@@ -49,9 +78,9 @@ public final class ProjectStore {
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(Config(host: host, projects: projects)).write(to: fileURL, options: .atomic)
+            try encoder.encode(Config(hosts: hosts, projects: projects)).write(to: fileURL, options: .atomic)
         } catch {
-            NSLog("Hodor:failed to save config: \(error)")
+            NSLog("Hodor: failed to save config: \(error)")
         }
     }
 }
