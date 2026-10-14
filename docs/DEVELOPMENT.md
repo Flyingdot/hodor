@@ -69,6 +69,18 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
     was not used because it leaves out AppKit-backed controls (toggle, picker, text field). The tests only check
     sizes; the PNGs are for looking at. This replaces the uncommitted offscreen hook.
   - Re-verified the installed app: tunnel 4200 restored on launch through winterfell, HTTP 200.
+- Logo "Wedged Open" (picked from three proposals): a snow-capped door held ajar by a coral doorstop, with amber
+  server light spilling through the gap.
+  - App icon: `assets/AppIcon.svg` → `scripts/make-icon.sh` (headless Chrome, because CoreSVG drops the shadows,
+    plus `iconutil`) → `assets/AppIcon.icns`, which is committed. `bundle.sh` copies it to `Contents/Resources`, and
+    `CFBundleIconFile` points to it.
+  - The menu bar uses template glyphs drawn in code (`MenuBarIcon`): a shut door when idle, and the door ajar with a
+    wedge while a tunnel runs. They replace the SF Symbols.
+  - UI colors come from the icon (`Brand.swift`). Night blue/frost is the tint. Amber marks a running tunnel (status
+    dot with a glow, toggle). Coral is used for errors. The header shows a small version of the icon (`HodorMark`).
+  - Render tests: added `brand` (mark plus glyphs) and `content-dark` (dark mode).
+  - Live check: 24 tests pass. The installed app has the icon, and tunnel 4200 was restored on launch (ssh
+    listening). There was no HTTP response because nothing was listening on 4200 on winterfell at the time.
 
 ## Behaviour details
 

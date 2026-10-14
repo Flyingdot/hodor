@@ -19,7 +19,7 @@ open build/Hodor.app
 scripts/bundle.sh --install  # also copies the app to ~/Applications
 ```
 
-The app has no Dock icon; it lives in the menu bar as a door, which is open while at least one tunnel runs.
+The app has no Dock icon; it lives in the menu bar as a door, which is wedged open while at least one tunnel runs.
 
 ## Usage
 
