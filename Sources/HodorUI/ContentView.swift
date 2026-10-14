@@ -8,20 +8,36 @@ struct HostServers {
     var isLoading = false
 }
 
-struct ContentView: View {
+public struct ContentView: View {
     @Bindable var store: ProjectStore
     var tunnels: TunnelManager
+    private let discover: @Sendable (String) async throws -> [DevServer]
 
-    @State private var discovery: [String: HostServers] = [:]
+    @State private var discovery: [String: HostServers]
     @State private var editing: Project?
     @State private var isAdding = false
     @State private var showHosts = false
+
+    public init(store: ProjectStore, tunnels: TunnelManager) {
+        self.init(store: store, tunnels: tunnels, discovery: [:], discover: DevServerDiscovery.discover(host:))
+    }
+
+    /// Tests pass fixed discovery results and a stub instead of ssh.
+    init(
+        store: ProjectStore, tunnels: TunnelManager, discovery: [String: HostServers],
+        discover: @escaping @Sendable (String) async throws -> [DevServer]
+    ) {
+        self.store = store
+        self.tunnels = tunnels
+        self.discover = discover
+        _discovery = State(initialValue: discovery)
+    }
 
     private var isLoading: Bool {
         discovery.values.contains { $0.isLoading }
     }
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
 
@@ -129,7 +145,7 @@ struct ContentView: View {
     private func refresh(_ host: String) async {
         discovery[host, default: HostServers()].isLoading = true
         do {
-            let servers = try await DevServerDiscovery.discover(host: host)
+            let servers = try await discover(host)
             discovery[host] = HostServers(servers: servers)
         } catch {
             discovery[host] = HostServers(servers: [], error: error.localizedDescription)

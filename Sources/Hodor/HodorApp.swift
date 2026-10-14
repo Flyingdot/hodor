@@ -1,4 +1,5 @@
 import HodorCore
+import HodorUI
 import SwiftUI
 
 @main

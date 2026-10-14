@@ -6,7 +6,9 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "HodorCore"),
-        .executableTarget(name: "Hodor", dependencies: ["HodorCore"]),
+        .target(name: "HodorUI", dependencies: ["HodorCore"]),
+        .executableTarget(name: "Hodor", dependencies: ["HodorCore", "HodorUI"]),
         .testTarget(name: "HodorCoreTests", dependencies: ["HodorCore"]),
+        .testTarget(name: "HodorUITests", dependencies: ["HodorCore", "HodorUI"]),
     ]
 )

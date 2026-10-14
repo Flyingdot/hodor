@@ -62,6 +62,13 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
     add/remove. Removing a host deselects and deactivates its projects.
   - Render check with a temporary offscreen hook (winterfell + unresolvable `castle-black`): the castle-black
     error shows, winterfell servers still load. `swift test`: 17 tests pass.
+- UI render tests:
+  - Views moved to a `HodorUI` library so tests can import them. `ContentView` has an internal init that takes
+    fixture discovery results and a stub instead of ssh.
+  - `HodorUITests` renders through `NSHostingView` in light mode into `.build/ui-snapshots/*.png`. `ImageRenderer`
+    was not used because it leaves out AppKit-backed controls (toggle, picker, text field). The tests only check
+    sizes; the PNGs are for looking at. This replaces the uncommitted offscreen hook.
+  - Re-verified the installed app: tunnel 4200 restored on launch through winterfell, HTTP 200.
 
 ## Behaviour details
 
