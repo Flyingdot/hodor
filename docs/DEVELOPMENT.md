@@ -21,7 +21,7 @@ running on `winterfell`, so switching between worktrees is one click instead of 
 | Tunnels | One `ssh -N -L <local>:localhost:<remote> <host>` child process per active project | Same thing as the manual workflow, reuses `~/.ssh/config` and the agent |
 | Discovery | `ssh <host> ss -Htlnp` + `/proc/<pid>/cwd` | Port plus worktree directory gives a useful label |
 | Persistence | JSON at `~/Library/Application Support/Hodor/config.json` | Easy to inspect and hand-edit |
-| Host | Defaults to `winterfell`, stored in the config | No need for a settings UI yet |
+| Hosts | List of ssh hosts in the config (default `[winterfell]`), host stored per project next to `remotePort` | Projects on different machines at once; ssh config does the rest |
 
 ## Work packages
 
@@ -51,6 +51,17 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   - `swift test`: 14 tests in 4 suites pass.
 - Renamed Tunneler → Hodor (he holds the door; he's from Winterfell). Bundle id `ch.meimail.hodor`, config in
   `~/Library/Application Support/Hodor`. Menu bar icon is a door, open while at least one tunnel runs.
+- Multi-host support:
+  - Config: `hosts: [String]` replaces `host`; each project has `host` + `remotePort`. Old configs migrate on
+    load (the single host becomes the list, projects with a selected server get that host). The old key is
+    dropped on the next save.
+  - `TunnelManager.sync(projects:)` reads the host from each project; its spec already compared the host, so
+    switching a project to another machine restarts the tunnel.
+  - UI: all hosts are queried in parallel (task group). The picker labels servers `host · :port · process · dir`
+    when there is more than one host. Hosts panel behind the server icon: per-host server count or ssh error,
+    add/remove. Removing a host deselects and deactivates its projects.
+  - Render check with a temporary offscreen hook (winterfell + unresolvable `castle-black`): the castle-black
+    error shows, winterfell servers still load. `swift test`: 17 tests pass.
 
 ## Behaviour details
 
@@ -67,5 +78,6 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
 
 - If the app crashes (not quit/killed), its ssh children survive and hold the ports until killed by hand.
 - `running` means the ssh process is alive, not that the remote port answers.
-- Host can only be changed in `config.json` (restart the app afterwards).
+- Hosts must be added by name; entries from `~/.ssh/config` are not suggested yet.
+- Discovery needs Linux (`ss`, `/proc`); macOS hosts would need an `lsof` fallback.
 - No launch-at-login yet (add the app to Login Items manually).
