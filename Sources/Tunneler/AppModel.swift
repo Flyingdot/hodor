@@ -6,8 +6,17 @@ import TunnelerCore
 final class AppModel {
     let store = ProjectStore()
     let tunnels = TunnelManager()
+    private var signalSources: [DispatchSourceSignal] = []
 
     init() {
+        // Quit cleanly on kill/Ctrl-C too, otherwise the ssh children outlive the app and keep the ports busy.
+        for sig in [SIGTERM, SIGINT] {
+            signal(sig, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+            source.setEventHandler { NSApplication.shared.terminate(nil) }
+            source.resume()
+            signalSources.append(source)
+        }
         store.onChange = { [unowned self] in sync() }
         sync()
         NotificationCenter.default.addObserver(
