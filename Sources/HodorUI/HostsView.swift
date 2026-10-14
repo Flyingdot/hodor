@@ -21,7 +21,7 @@ struct HostsView: View {
                             if let error = state.error {
                                 Text(error)
                                     .font(.caption)
-                                    .foregroundStyle(.red)
+                                    .foregroundStyle(Color.hodorWedge)
                                     .textSelection(.enabled)
                             } else if !state.isLoading {
                                 Text(state.servers.count == 1 ? "1 server" : "\(state.servers.count) servers")

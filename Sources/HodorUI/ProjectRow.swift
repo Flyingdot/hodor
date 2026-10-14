@@ -34,6 +34,7 @@ struct ProjectRow: View {
                 .fixedSize()
                 Toggle("", isOn: Binding(get: { project.isActive }, set: onToggle))
                     .toggleStyle(.switch)
+                    .tint(.hodorLight)
                     .labelsHidden()
                     .disabled(!project.hasServer || project.localPort == nil)
             }
@@ -59,7 +60,7 @@ struct ProjectRow: View {
             if case .failed(let message) = status {
                 Text(message)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.hodorWedge)
                     .textSelection(.enabled)
             }
         }
@@ -68,11 +69,13 @@ struct ProjectRow: View {
     private var statusDot: some View {
         let color: Color =
             switch status {
-            case .running: .green
-            case .failed: .red
+            case .running: .hodorLight
+            case .failed: .hodorWedge
             case .inactive: .secondary.opacity(0.4)
             }
+        // A running tunnel glows like the light through the open door.
         return Circle().fill(color).frame(width: 8, height: 8)
+            .shadow(color: status == .running ? color : .clear, radius: 3)
     }
 
     /// Host and port of the selected dev server, as one picker value.

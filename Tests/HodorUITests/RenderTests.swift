@@ -85,11 +85,37 @@ struct RenderTests {
         #expect(size.height > 0)
     }
 
-    /// Draws the view through AppKit (ImageRenderer leaves out AppKit-backed controls) in light mode.
-    private func render(_ view: some View, as name: String) throws -> NSSize {
+    @Test func darkMode() throws {
+        let store = ProjectStore(fileURL: fileURL)
+        store.projects = [
+            Project(name: "App feature", url: "https://localhost:4200", host: "winterfell", remotePort: 3780)
+        ]
+        let view = ContentView(
+            store: store, tunnels: TunnelManager(), discovery: ["winterfell": HostServers(servers: Self.servers)],
+            discover: { _ in Self.servers })
+        let size = try render(view, as: "content-dark", appearance: .darkAqua)
+        #expect(size.width == 420)
+    }
+
+    @Test func brand() throws {
+        let glyphs = HStack(spacing: 16) {
+            HodorMark(size: 128)
+            HodorMark()
+            ForEach([false, true], id: \.self) { open in
+                Image(nsImage: MenuBarIcon.image(open: open))
+                Image(nsImage: MenuBarIcon.image(open: open)).resizable().frame(width: 72, height: 72)
+            }
+        }
+        let size = try render(glyphs.padding(), as: "brand")
+        #expect(MenuBarIcon.image(open: true).isTemplate)
+        #expect(size.height > 128)
+    }
+
+    /// Draws the view through AppKit (ImageRenderer leaves out AppKit-backed controls), in light mode by default.
+    private func render(_ view: some View, as name: String, appearance: NSAppearance.Name = .aqua) throws -> NSSize {
         _ = NSApplication.shared
         let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
-        host.appearance = NSAppearance(named: .aqua)
+        host.appearance = NSAppearance(named: appearance)
         host.frame.size = host.fittingSize
         let window = NSWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
         window.contentView = host

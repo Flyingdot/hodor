@@ -21,9 +21,10 @@ bin_dir="$(swift build -c release --show-bin-path)"
 
 app="build/Hodor.app"
 rm -rf "$app"
-mkdir -p "$app/Contents/MacOS"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin_dir/Hodor" "$app/Contents/MacOS/Hodor"
 cp scripts/Info.plist "$app/Contents/Info.plist"
+cp assets/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 
 codesign --force --sign - "$app"
 

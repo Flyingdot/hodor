@@ -12,7 +12,7 @@ struct HodorApp: App {
         } label: {
             let anyRunning = model.store.projects.contains { model.tunnels.status(for: $0) == .running }
             // Hodor holds the door open while at least one tunnel is up.
-            Image(systemName: anyRunning ? "door.left.hand.open" : "door.left.hand.closed")
+            Image(nsImage: MenuBarIcon.image(open: anyRunning))
         }
         .menuBarExtraStyle(.window)
     }

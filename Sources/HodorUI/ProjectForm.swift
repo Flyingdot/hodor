@@ -28,7 +28,7 @@ struct ProjectForm: View {
             if urlTouched && Project.localPort(of: url) == nil {
                 Text("Enter a URL with a port, e.g. https://localhost:4200")
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.hodorWedge)
             }
             HStack {
                 Spacer()

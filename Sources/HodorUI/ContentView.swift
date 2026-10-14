@@ -54,7 +54,7 @@ public struct ContentView: View {
                     if let error = discovery[host]?.error {
                         Text(error)
                             .font(.caption)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Color.hodorWedge)
                             .textSelection(.enabled)
                     }
                 }
@@ -105,12 +105,14 @@ public struct ContentView: View {
         }
         .padding()
         .frame(width: 420)
+        .tint(.hodorNight)
         .task { await refreshAll() }
     }
 
     private var header: some View {
         HStack {
-            Text("Hodor").font(.headline)
+            HodorMark()
+            Text("Hodor").font(.headline).fontDesign(.rounded)
             Spacer()
             if isLoading {
                 ProgressView().controlSize(.small)

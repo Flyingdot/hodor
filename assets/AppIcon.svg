@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2C4F86"/>
+      <stop offset="1" stop-color="#16244A"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFEDB3"/>
+      <stop offset="1" stop-color="#FFB547"/>
+    </linearGradient>
+    <linearGradient id="spill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFC861" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFC861" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A9CBF0"/>
+      <stop offset="1" stop-color="#86ADDC"/>
+    </linearGradient>
+    <linearGradient id="door" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#D4E8FD"/>
+      <stop offset="1" stop-color="#F2F8FF"/>
+    </linearGradient>
+    <linearGradient id="wedge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF8A5C"/>
+      <stop offset="1" stop-color="#E9533A"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.6" cy="0.52" r="0.42">
+      <stop offset="0" stop-color="#FFD27A" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFD27A" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="body">
+      <rect x="100" y="100" width="824" height="824" rx="185"/>
+    </clipPath>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0B1430" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- body (Big Sur grid: 824 px rounded square, centred) -->
+  <g filter="url(#shadow)">
+    <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  </g>
+
+  <g clip-path="url(#body)">
+    <rect x="100" y="100" width="824" height="824" fill="url(#halo)"/>
+
+    <!-- floor -->
+    <rect x="100" y="770" width="824" height="154" fill="#0E1835" opacity="0.4"/>
+    <!-- light spilling out through the gap -->
+    <polygon points="566,770 672,770 900,924 548,924" fill="url(#spill)"/>
+
+    <!-- door frame -->
+    <rect x="320" y="232" width="384" height="548" rx="26" fill="url(#frame)" filter="url(#soft)"/>
+    <!-- opening: the dev server's light -->
+    <rect x="352" y="264" width="320" height="506" rx="6" fill="url(#glow)"/>
+
+    <!-- door leaf, swung ajar toward the viewer, hinged left -->
+    <g filter="url(#soft)">
+      <polygon points="352,264 548,234 548,796 352,770" fill="url(#door)"/>
+      <polygon points="548,234 568,240 568,790 548,796" fill="#7FA6D6"/>
+    </g>
+    <polygon points="386,314 516,298 516,500 386,506" fill="#B9D7F7" opacity="0.7"/>
+    <polygon points="386,546 516,544 516,748 386,730" fill="#B9D7F7" opacity="0.7"/>
+    <circle cx="528" cy="524" r="13" fill="#2C4F86"/>
+
+    <!-- the wedge holding the door: thin tip under the leaf, fat end out -->
+    <path d="M484 812 L612 812 Q624 812 621 800 L611 762 Q607 750 595 755 L490 797 Q474 805 484 812 Z" fill="url(#wedge)" filter="url(#soft)"/>
+
+    <!-- snow cap on the lintel -->
+    <path d="M308 246 Q306 212 342 210 L682 210 Q718 212 716 246 Q702 258 686 248 Q670 266 650 252 Q628 266 610 252 Q562 266 520 252 Q470 268 430 252 Q398 266 378 252 Q350 266 334 250 Q318 260 308 246 Z" fill="#FFFFFF"/>
+
+    <!-- snowflake -->
+    <g stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9" transform="translate(214 246)">
+      <g id="arm">
+        <line x1="0" y1="0" x2="0" y2="-34"/>
+        <polyline points="-9,-26 0,-18 9,-26"/>
+      </g>
+      <use href="#arm" transform="rotate(60)"/>
+      <use href="#arm" transform="rotate(120)"/>
+      <use href="#arm" transform="rotate(180)"/>
+      <use href="#arm" transform="rotate(240)"/>
+      <use href="#arm" transform="rotate(300)"/>
+    </g>
+    <g fill="#FFFFFF" opacity="0.75">
+      <circle cx="262" cy="392" r="7"/>
+      <circle cx="808" cy="300" r="9"/>
+      <circle cx="772" cy="446" r="6"/>
+      <circle cx="200" cy="572" r="6"/>
+      <circle cx="836" cy="616" r="7"/>
+    </g>
+  </g>
+</svg>
