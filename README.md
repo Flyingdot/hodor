@@ -26,7 +26,9 @@ The app has no Dock icon; it lives in the menu bar.
 2. Pick one of the dev servers running on the host.
 3. Toggle the project on. The URL now reaches that dev server.
 
-Several projects can be active at the same time.
+Several projects can be active at the same time. To switch worktrees, pick another server for the
+project; the tunnel restarts right away. Activating a project turns off any other project on the same
+local port.
 
 ## Configuration
 
