@@ -1,11 +1,11 @@
 import Foundation
 import Testing
-@testable import TunnelerCore
+@testable import HodorCore
 
 @MainActor
 struct ProjectStoreTests {
     let fileURL = FileManager.default.temporaryDirectory
-        .appendingPathComponent("tunneler-tests-\(UUID().uuidString)/config.json")
+        .appendingPathComponent("hodor-tests-\(UUID().uuidString)/config.json")
 
     @Test func activatingDeactivatesOtherProjectsOnSamePort() {
         let store = ProjectStore(fileURL: fileURL)

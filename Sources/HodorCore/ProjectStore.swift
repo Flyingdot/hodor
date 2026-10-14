@@ -6,7 +6,7 @@ struct Config: Codable {
     var projects: [Project]
 }
 
-/// Persists the remote host and project list as JSON in ~/Library/Application Support/Tunneler.
+/// Persists the remote host and project list as JSON in ~/Library/Application Support/Hodor.
 @MainActor
 @Observable
 public final class ProjectStore {
@@ -40,7 +40,7 @@ public final class ProjectStore {
 
     public static var defaultFileURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Tunneler/config.json")
+            .appendingPathComponent("Hodor/config.json")
     }
 
     private func save() {
@@ -51,7 +51,7 @@ public final class ProjectStore {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(Config(host: host, projects: projects)).write(to: fileURL, options: .atomic)
         } catch {
-            NSLog("Tunneler: failed to save config: \(error)")
+            NSLog("Hodor:failed to save config: \(error)")
         }
     }
 }

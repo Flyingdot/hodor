@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "Tunneler",
+    name: "Hodor",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "TunnelerCore"),
-        .executableTarget(name: "Tunneler", dependencies: ["TunnelerCore"]),
-        .testTarget(name: "TunnelerCoreTests", dependencies: ["TunnelerCore"]),
+        .target(name: "HodorCore"),
+        .executableTarget(name: "Hodor", dependencies: ["HodorCore"]),
+        .testTarget(name: "HodorCoreTests", dependencies: ["HodorCore"]),
     ]
 )

@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>ch.meimail.tunneler</string>
+	<string>ch.meimail.hodor</string>
 	<key>CFBundleName</key>
-	<string>Tunneler</string>
+	<string>Hodor</string>
 	<key>CFBundleDisplayName</key>
-	<string>Tunneler</string>
+	<string>Hodor</string>
 	<key>CFBundleExecutable</key>
-	<string>Tunneler</string>
+	<string>Hodor</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleInfoDictionaryVersion</key>

@@ -1,6 +1,6 @@
-# Tunneler
+# Hodor
 
-A macOS menu bar app that forwards fixed local URLs such as `https://localhost:4200` to dev
+Hodor holds the door. A macOS menu bar app that forwards fixed local URLs such as `https://localhost:4200` to dev
 servers running on `winterfell` through `ssh -L`. It replaces typing
 `ssh -N -L 4200:localhost:4201 winterfell` by hand every time you switch to another worktree.
 
@@ -13,12 +13,12 @@ servers running on `winterfell` through `ssh -L`. It replaces typing
 ## Build and run
 
 ```sh
-scripts/bundle.sh            # builds build/Tunneler.app
-open build/Tunneler.app
+scripts/bundle.sh            # builds build/Hodor.app
+open build/Hodor.app
 scripts/bundle.sh --install  # also copies the app to ~/Applications
 ```
 
-The app has no Dock icon; it lives in the menu bar.
+The app has no Dock icon; it lives in the menu bar as a door, which is open while at least one tunnel runs.
 
 ## Usage
 
@@ -32,7 +32,7 @@ local port.
 
 ## Configuration
 
-Projects are stored in `~/Library/Application Support/Tunneler/config.json`. The host defaults
+Projects are stored in `~/Library/Application Support/Hodor/config.json`. The host defaults
 to `winterfell` and can be changed in that file.
 
 ## Development

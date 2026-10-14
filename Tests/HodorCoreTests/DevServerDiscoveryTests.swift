@@ -1,5 +1,5 @@
 import Testing
-@testable import TunnelerCore
+@testable import HodorCore
 
 struct DevServerDiscoveryTests {
     @Test func parsesNormalLines() {

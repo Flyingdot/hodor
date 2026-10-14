@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds build/Tunneler.app from the Swift package.
+# Builds build/Hodor.app from the Swift package.
 # Usage: scripts/bundle.sh [--install]
 #   --install  also copy the app to ~/Applications (replaces an existing copy)
 set -euo pipefail
@@ -19,10 +19,10 @@ cd "$repo_root"
 swift build -c release
 bin_dir="$(swift build -c release --show-bin-path)"
 
-app="build/Tunneler.app"
+app="build/Hodor.app"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS"
-cp "$bin_dir/Tunneler" "$app/Contents/MacOS/Tunneler"
+cp "$bin_dir/Hodor" "$app/Contents/MacOS/Hodor"
 cp scripts/Info.plist "$app/Contents/Info.plist"
 
 codesign --force --sign - "$app"
@@ -30,11 +30,11 @@ codesign --force --sign - "$app"
 echo "Built $repo_root/$app"
 
 if [ "$install" = true ]; then
-  if pgrep -x Tunneler >/dev/null; then
-    echo "Tunneler is running. Quit it from the menu bar, then run $0 --install again." >&2
+  if pgrep -x Hodor >/dev/null; then
+    echo "Hodor is running. Quit it from the menu bar, then run $0 --install again." >&2
     exit 1
   fi
-  dest="$HOME/Applications/Tunneler.app"
+  dest="$HOME/Applications/Hodor.app"
   mkdir -p "$HOME/Applications"
   rm -rf "$dest"
   cp -R "$app" "$dest"

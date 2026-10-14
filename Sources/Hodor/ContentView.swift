@@ -1,5 +1,5 @@
 import SwiftUI
-import TunnelerCore
+import HodorCore
 
 struct ContentView: View {
     @Bindable var store: ProjectStore
@@ -67,7 +67,7 @@ struct ContentView: View {
 
     private var header: some View {
         HStack {
-            Text("Tunneler").font(.headline)
+            Text("Hodor").font(.headline)
             Text(store.host).foregroundStyle(.secondary)
             Spacer()
             if isLoading {

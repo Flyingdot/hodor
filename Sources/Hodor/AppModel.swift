@@ -1,5 +1,5 @@
 import AppKit
-import TunnelerCore
+import HodorCore
 
 /// Owns the store and the tunnels, and keeps them in sync even while the menu is closed.
 @MainActor

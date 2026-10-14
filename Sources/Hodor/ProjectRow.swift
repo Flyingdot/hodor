@@ -1,5 +1,5 @@
 import SwiftUI
-import TunnelerCore
+import HodorCore
 
 struct ProjectRow: View {
     @Binding var project: Project

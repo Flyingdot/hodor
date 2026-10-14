@@ -1,4 +1,4 @@
-# Tunneler – development notes
+# Hodor – development notes
 
 Menu bar app that forwards fixed local URLs (e.g. `https://localhost:4200`) to dev servers
 running on `winterfell`, so switching between worktrees is one click instead of a new
@@ -17,10 +17,10 @@ running on `winterfell`, so switching between worktrees is one click instead of 
 | Topic | Decision | Why |
 |---|---|---|
 | UI | SwiftUI `MenuBarExtra` (`.window` style), macOS 14+ | Native, no dependencies |
-| Build | Swift package + `scripts/bundle.sh` → `build/Tunneler.app` | No Xcode project to maintain |
+| Build | Swift package + `scripts/bundle.sh` → `build/Hodor.app` | No Xcode project to maintain |
 | Tunnels | One `ssh -N -L <local>:localhost:<remote> <host>` child process per active project | Same thing as the manual workflow, reuses `~/.ssh/config` and the agent |
 | Discovery | `ssh <host> ss -Htlnp` + `/proc/<pid>/cwd` | Port plus worktree directory gives a useful label |
-| Persistence | JSON at `~/Library/Application Support/Tunneler/config.json` | Easy to inspect and hand-edit |
+| Persistence | JSON at `~/Library/Application Support/Hodor/config.json` | Easy to inspect and hand-edit |
 | Host | Defaults to `winterfell`, stored in the config | No need for a settings UI yet |
 
 ## Work packages
@@ -49,6 +49,8 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   - Render check: screen capture is not available from the agent session, so the real `ContentView` was
     rendered offscreen into a PNG via a temporary hook (not committed). Layout, status dot and server labels OK.
   - `swift test`: 14 tests in 4 suites pass.
+- Renamed Tunneler → Hodor (he holds the door; he's from Winterfell). Bundle id `ch.meimail.hodor`, config in
+  `~/Library/Application Support/Hodor`. Menu bar icon is a door, open while at least one tunnel runs.
 
 ## Behaviour details
 
