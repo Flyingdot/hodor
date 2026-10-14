@@ -1,5 +1,5 @@
-import SwiftUI
 import HodorCore
+import SwiftUI
 
 /// Inline form to add a project (project == nil) or edit name and URL of an existing one.
 struct ProjectForm: View {

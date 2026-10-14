@@ -1,13 +1,15 @@
 import Testing
+
 @testable import HodorCore
 
 struct DevServerDiscoveryTests {
     @Test func parsesNormalLines() {
         let output = "3780\t1384\tnode-MainThread\t/home/dani/worktrees/a\n4201\t2000\tnode\t/home/dani/b\n"
-        #expect(DevServerDiscovery.parse(output) == [
-            DevServer(port: 3780, pid: 1384, process: "node-MainThread", directory: "/home/dani/worktrees/a"),
-            DevServer(port: 4201, pid: 2000, process: "node", directory: "/home/dani/b"),
-        ])
+        #expect(
+            DevServerDiscovery.parse(output) == [
+                DevServer(port: 3780, pid: 1384, process: "node-MainThread", directory: "/home/dani/worktrees/a"),
+                DevServer(port: 4201, pid: 2000, process: "node", directory: "/home/dani/b"),
+            ])
     }
 
     @Test func missingPidLeavesFieldsNil() {
@@ -25,10 +27,11 @@ struct DevServerDiscoveryTests {
 
     @Test func deduplicatesByPortPreferringPid() {
         let output = "22\t\t\t\n4200\t\t\t\n4200\t42\tnode\t/srv\n22\t\t\t\n4200\t43\tother\t/x\n"
-        #expect(DevServerDiscovery.parse(output) == [
-            DevServer(port: 22),
-            DevServer(port: 4200, pid: 42, process: "node", directory: "/srv"),
-        ])
+        #expect(
+            DevServerDiscovery.parse(output) == [
+                DevServer(port: 22),
+                DevServer(port: 4200, pid: 42, process: "node", directory: "/srv"),
+            ])
     }
 
     @Test func sortsByPort() {

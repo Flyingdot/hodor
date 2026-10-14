@@ -1,5 +1,5 @@
-import SwiftUI
 import HodorCore
+import SwiftUI
 
 /// Lists the ssh hosts with their discovery state, and adds or removes hosts.
 struct HostsView: View {

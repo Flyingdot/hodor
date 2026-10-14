@@ -1,5 +1,5 @@
-import SwiftUI
 import HodorCore
+import SwiftUI
 
 @main
 struct HodorApp: App {

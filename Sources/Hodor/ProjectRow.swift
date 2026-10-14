@@ -1,5 +1,5 @@
-import SwiftUI
 import HodorCore
+import SwiftUI
 
 struct ProjectRow: View {
     @Binding var project: Project
@@ -66,11 +66,12 @@ struct ProjectRow: View {
     }
 
     private var statusDot: some View {
-        let color: Color = switch status {
-        case .running: .green
-        case .failed: .red
-        case .inactive: .secondary.opacity(0.4)
-        }
+        let color: Color =
+            switch status {
+            case .running: .green
+            case .failed: .red
+            case .inactive: .secondary.opacity(0.4)
+            }
         return Circle().fill(color).frame(width: 8, height: 8)
     }
 

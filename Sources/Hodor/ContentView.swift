@@ -1,5 +1,5 @@
-import SwiftUI
 import HodorCore
+import SwiftUI
 
 /// Discovery result for one host.
 struct HostServers {
@@ -26,10 +26,12 @@ struct ContentView: View {
             header
 
             if showHosts {
-                HostsView(store: store, discovery: discovery, onAdd: { host in
-                    store.addHost(host)
-                    Task { await refresh(host) }
-                })
+                HostsView(
+                    store: store, discovery: discovery,
+                    onAdd: { host in
+                        store.addHost(host)
+                        Task { await refresh(host) }
+                    })
                 Divider()
             } else {
                 ForEach(store.hosts, id: \.self) { host in
@@ -49,10 +51,12 @@ struct ContentView: View {
 
             ForEach($store.projects) { $project in
                 if editing?.id == project.id {
-                    ProjectForm(project: project, onSave: { updated in
-                        project = updated
-                        editing = nil
-                    }, onCancel: { editing = nil })
+                    ProjectForm(
+                        project: project,
+                        onSave: { updated in
+                            project = updated
+                            editing = nil
+                        }, onCancel: { editing = nil })
                 } else {
                     ProjectRow(
                         project: $project,
@@ -68,10 +72,12 @@ struct ContentView: View {
             }
 
             if isAdding {
-                ProjectForm(project: nil, onSave: { project in
-                    store.projects.append(project)
-                    isAdding = false
-                }, onCancel: { isAdding = false })
+                ProjectForm(
+                    project: nil,
+                    onSave: { project in
+                        store.projects.append(project)
+                        isAdding = false
+                    }, onCancel: { isAdding = false })
             }
 
             HStack {

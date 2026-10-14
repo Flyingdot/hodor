@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import HodorCore
 
 @MainActor
@@ -36,16 +37,16 @@ struct ProjectStoreTests {
 
     @Test func migratesSingleHostConfig() throws {
         let legacy = """
-        {
-          "host" : "castle-black",
-          "projects" : [
-            { "id" : "711EC1AE-2CAE-4D8C-A207-DFBD19F09196", "isActive" : true, "name" : "A",
-              "remotePort" : 4200, "url" : "https://localhost:4200" },
-            { "id" : "22222222-2222-2222-2222-222222222222", "isActive" : false, "name" : "B",
-              "url" : "https://localhost:4300" }
-          ]
-        }
-        """
+            {
+              "host" : "castle-black",
+              "projects" : [
+                { "id" : "711EC1AE-2CAE-4D8C-A207-DFBD19F09196", "isActive" : true, "name" : "A",
+                  "remotePort" : 4200, "url" : "https://localhost:4200" },
+                { "id" : "22222222-2222-2222-2222-222222222222", "isActive" : false, "name" : "B",
+                  "url" : "https://localhost:4300" }
+              ]
+            }
+            """
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data(legacy.utf8).write(to: fileURL)
 
