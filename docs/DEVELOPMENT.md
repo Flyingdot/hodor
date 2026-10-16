@@ -88,8 +88,8 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   `[::1]`). Sockets bound to other addresses (Tailscale IP, `127.0.0.53`, docker bridge) can't be reached via
   `localhost` and are left out. Process name and directory are only visible for your own processes.
 - Process names come from `/proc/<pid>/comm`, so node shows up as `node-MainThread`.
-- Discovery runs when the menu content appears (SwiftUI `.task`; not verified whether that's on every open) and
-  on the reload button.
+- Discovery runs on the first open (SwiftUI `.task`), on every later open (the popup window becomes key,
+  `NSWindow.didBecomeKeyNotification`) and on the reload button. An open while a query is still running is skipped.
 - A tunnel that dies (sleep, network change, port in use) shows the ssh error and is retried every 5 s while active.
 - Changing the server of an active project restarts its tunnel immediately.
 

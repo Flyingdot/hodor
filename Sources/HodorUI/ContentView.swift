@@ -107,6 +107,12 @@ public struct ContentView: View {
         .frame(width: 420)
         .tint(.hodorNight)
         .task { await refreshAll() }
+        // MenuBarExtra keeps the view alive between opens, so `.task` only runs once.
+        // The popup becomes key each time it opens, and it's the app's only window.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            guard !isLoading else { return }
+            Task { await refreshAll() }
+        }
     }
 
     private var header: some View {
