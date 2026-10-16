@@ -58,6 +58,23 @@ struct DevServerDiscoveryTests {
         #expect(servers.map(\.subdirectory) == ["src/web", nil])
     }
 
+    @Test(
+        arguments: [
+            ("node", "next-server (v16.4.0)    ", nil, "next-server"),
+            ("node", "node", "/w/node_modules/.pnpm/vite@8/node_modules/vite/bin/vite.js", "vite"),
+            ("node", "/usr/bin/node", "/w/node_modules/.bin/ng", "ng"),
+            ("node", "node", nil, "node"),
+            ("dcp", "dcp", "run-controllers", "dcp"),
+        ] as [(String, String?, String?, String)])
+    func namesNodeProcesses(executable: String, argv0: String?, script: String?, expected: String) {
+        #expect(DevServerDiscovery.processName(executable: executable, argv0: argv0, script: script) == expected)
+    }
+
+    @Test func parsesNodeArguments() {
+        let output = "5199\t9\tnode\t/w\t\t\t\tnode\t/w/node_modules/vite/bin/vite.js\n"
+        #expect(DevServerDiscovery.parse(output).first?.process == "vite")
+    }
+
     @Test func bareRepositoryNameDropsGitExtension() {
         #expect(DevServer(port: 1, gitCommonDir: "/srv/app.git").repository == "app")
     }

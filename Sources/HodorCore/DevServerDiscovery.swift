@@ -7,9 +7,11 @@ public enum DevServerDiscovery {
         public var errorDescription: String? { message }
     }
 
-    /// POSIX sh snippet printing `port<TAB>pid<TAB>process<TAB>cwd<TAB>worktree<TAB>gitCommonDir<TAB>branch`
+    /// POSIX sh snippet printing
+    /// `port<TAB>pid<TAB>process<TAB>cwd<TAB>worktree<TAB>gitCommonDir<TAB>branch<TAB>argv0<TAB>script`
     /// per listener reachable via `localhost` on the remote host. The process is the executable's name, since
     /// `/proc/<pid>/comm` is cut at 15 characters. The git fields stay empty outside a repo.
+    /// `argv0` and `script` (the first argument not starting with `-`) are only sent for node, to name it.
     /// Wrapped in `sh -c` because the remote login shell may not be POSIX (e.g. fish).
     /// Contains no single quotes, so it can be single-quoted as a whole.
     static let remoteCommand: String = {
@@ -18,13 +20,16 @@ public enum DevServerDiscovery {
             "addr=${local%:*}; port=${local##*:};",
             "case $addr in 127.0.0.1|0.0.0.0|\"*\"|\"[::]\"|\"[::1]\") ;; *) continue ;; esac;",
             "pid=$(echo \"$rest\" | sed -n \"s/.*pid=\\([0-9]*\\).*/\\1/p\");",
-            "comm=; cwd=; top=; common=; branch=;",
+            "comm=; cwd=; top=; common=; branch=; argv0=; script=;",
             "if [ -n \"$pid\" ]; then exe=$(readlink /proc/$pid/exe 2>/dev/null); comm=${exe##*/};",
             "[ -n \"$comm\" ] || comm=$(cat /proc/$pid/comm 2>/dev/null); cwd=$(readlink /proc/$pid/cwd 2>/dev/null); fi;",
+            "if [ \"$comm\" = node ]; then args=$(tr \"\\0\\t\" \"\\n \" < /proc/$pid/cmdline 2>/dev/null);",
+            "argv0=$(echo \"$args\" | head -n 1); script=$(echo \"$args\" | tail -n +2 | grep -v \"^-\" | head -n 1); fi;",
             "if [ -n \"$cwd\" ]; then",
             "g=$(git -C \"$cwd\" rev-parse --path-format=absolute --show-toplevel --git-common-dir --abbrev-ref HEAD 2>/dev/null);",
             "top=$(echo \"$g\" | sed -n 1p); common=$(echo \"$g\" | sed -n 2p); branch=$(echo \"$g\" | sed -n 3p); fi;",
-            "printf \"%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n\" \"$port\" \"$pid\" \"$comm\" \"$cwd\" \"$top\" \"$common\" \"$branch\";",
+            "printf \"%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n\" \"$port\" \"$pid\" \"$comm\" \"$cwd\" \"$top\" \"$common\" \"$branch\"",
+            "\"$argv0\" \"$script\";",
             "done",
         ].joined(separator: " ")
         return "sh -c '\(script)'"
@@ -53,12 +58,29 @@ public enum DevServerDiscovery {
                 return value.isEmpty ? nil : value
             }
             let server = DevServer(
-                port: port, pid: field(1).flatMap { Int($0) }, process: field(2), directory: field(3),
+                port: port, pid: field(1).flatMap { Int($0) },
+                process: field(2).map { processName(executable: $0, argv0: field(7), script: field(8)) }, directory: field(3),
                 worktreePath: field(4), gitCommonDir: field(5), branch: field(6).flatMap { $0 == "HEAD" ? nil : $0 })
             if let existing = byPort[port], existing.pid != nil || server.pid == nil { continue }
             byPort[port] = server
         }
         return byPort.values.sorted { $0.port < $1.port }
+    }
+
+    /// Names a node process after what it runs: a process title it set (`next-server (v16.4.0)` → `next-server`),
+    /// else its script (`…/vite/bin/vite.js` → `vite`). Other executables keep their name.
+    static func processName(executable: String, argv0: String?, script: String?) -> String {
+        guard executable == "node" else { return executable }
+        if let title = argv0?.split(separator: " ").first.map(String.init),
+            !title.contains("/"), title != "node"
+        {
+            return title
+        }
+        if let script, let name = script.split(separator: "/").last {
+            let base = URL(fileURLWithPath: String(name)).deletingPathExtension().lastPathComponent
+            if !base.isEmpty { return base }
+        }
+        return executable
     }
 
     /// Runs a process to completion and returns exit status, stdout and stderr. Blocks; call off the main thread.

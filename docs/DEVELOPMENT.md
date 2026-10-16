@@ -104,6 +104,8 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   `localhost` and are left out. Process name and directory are only visible for your own processes.
 - Process names come from the executable (`/proc/<pid>/exe`), falling back to `/proc/<pid>/comm`. .NET apps
   built with an apphost show their own name, not `dotnet`; the label drops it when the subdirectory ends with it.
+  node is named after what it runs: a process title it set (`next-server`), else its script (`vite.js` → `vite`).
+  Only for node does discovery send `argv[0]` and the first non-flag argument, nothing else from the command line.
 - The picker hides listeners without a pid (other users, root) and those outside a git worktree, unless "Show all
   listeners" is on (`showAllServers` in the config). A selected server that is hidden still shows at the top.
 - Worktree sections are titled `repo › worktree`, with the branch in brackets unless the folder is named after it
