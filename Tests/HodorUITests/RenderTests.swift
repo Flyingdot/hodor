@@ -69,14 +69,29 @@ struct RenderTests {
     @Test func hostsPanel() throws {
         let store = ProjectStore(fileURL: fileURL)
         store.addHost("castle-black")
+        store.projects = [
+            Project(name: "App feature", url: "https://localhost:4200", host: "winterfell", remotePort: 3780)
+        ]
         let view = HostsView(
             store: store,
             discovery: [
                 "winterfell": HostServers(servers: Self.servers),
                 "castle-black": HostServers(error: "ssh: connect to host castle-black port 22: Operation timed out"),
-            ], onAdd: { _ in })
+            ], suggestions: ["winterfell", "dragonstone"], onAdd: { _ in })
         let size = try render(view.padding().frame(width: 420), as: "hosts")
         #expect(size.height > 0)
+    }
+
+    @Test func hostsPage() throws {
+        let store = ProjectStore(fileURL: fileURL)
+        store.projects = [
+            Project(name: "App feature", url: "https://localhost:4200", host: "winterfell", remotePort: 3780)
+        ]
+        let view = ContentView(
+            store: store, tunnels: TunnelManager(), discovery: ["winterfell": HostServers(servers: Self.servers)],
+            discover: { _ in Self.servers }, showHosts: true)
+        let size = try render(view, as: "content-hosts")
+        #expect(size.width == 420)
     }
 
     @Test func projectForm() throws {

@@ -16,7 +16,8 @@ public struct ContentView: View {
     @State private var discovery: [String: HostServers]
     @State private var editing: Project?
     @State private var isAdding = false
-    @State private var showHosts = false
+    @State private var showHosts: Bool
+    @State private var sshAliases: [String] = []
 
     public init(store: ProjectStore, tunnels: TunnelManager) {
         self.init(store: store, tunnels: tunnels, discovery: [:], discover: DevServerDiscovery.discover(host:))
@@ -25,12 +26,13 @@ public struct ContentView: View {
     /// Tests pass fixed discovery results and a stub instead of ssh.
     init(
         store: ProjectStore, tunnels: TunnelManager, discovery: [String: HostServers],
-        discover: @escaping @Sendable (String) async throws -> [DevServer]
+        discover: @escaping @Sendable (String) async throws -> [DevServer], showHosts: Bool = false
     ) {
         self.store = store
         self.tunnels = tunnels
         self.discover = discover
         _discovery = State(initialValue: discovery)
+        _showHosts = State(initialValue: showHosts)
     }
 
     private var isLoading: Bool {
@@ -43,64 +45,13 @@ public struct ContentView: View {
 
             if showHosts {
                 HostsView(
-                    store: store, discovery: discovery,
+                    store: store, discovery: discovery, suggestions: sshAliases,
                     onAdd: { host in
                         store.addHost(host)
                         Task { await refresh(host) }
                     })
-                Divider()
             } else {
-                ForEach(store.hosts, id: \.self) { host in
-                    if let error = discovery[host]?.error {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(Color.hodorWedge)
-                            .textSelection(.enabled)
-                    }
-                }
-            }
-
-            if store.projects.isEmpty && !isAdding {
-                Text("No projects yet.")
-                    .foregroundStyle(.secondary)
-            }
-
-            ForEach($store.projects) { $project in
-                if editing?.id == project.id {
-                    ProjectForm(
-                        project: project,
-                        onSave: { updated in
-                            project = updated
-                            editing = nil
-                        }, onCancel: { editing = nil })
-                } else {
-                    ProjectRow(
-                        project: $project,
-                        hosts: store.hosts,
-                        discovery: discovery,
-                        status: tunnels.status(for: project),
-                        onToggle: { store.setActive($0, for: project.id) },
-                        onEdit: { editing = project },
-                        onDelete: { store.projects.removeAll { $0.id == project.id } }
-                    )
-                }
-                Divider()
-            }
-
-            if isAdding {
-                ProjectForm(
-                    project: nil,
-                    onSave: { project in
-                        store.projects.append(project)
-                        isAdding = false
-                    }, onCancel: { isAdding = false })
-            }
-
-            HStack {
-                Button("Add Project", systemImage: "plus") { isAdding = true }
-                    .disabled(isAdding)
-                Spacer()
-                Button("Quit") { NSApplication.shared.terminate(nil) }
+                projectList
             }
         }
         .padding()
@@ -115,21 +66,92 @@ public struct ContentView: View {
         }
     }
 
+    @ViewBuilder private var projectList: some View {
+        ForEach(store.hosts, id: \.self) { host in
+            if let error = discovery[host]?.error {
+                Button {
+                    openHosts()
+                } label: {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(Color.hodorWedge)
+                        .multilineTextAlignment(.leading)
+                }
+                .buttonStyle(.plain)
+                .help("Show hosts")
+            }
+        }
+
+        if store.projects.isEmpty && !isAdding {
+            Text("No projects yet.")
+                .foregroundStyle(.secondary)
+        }
+
+        ForEach($store.projects) { $project in
+            if editing?.id == project.id {
+                ProjectForm(
+                    project: project,
+                    onSave: { updated in
+                        project = updated
+                        editing = nil
+                    }, onCancel: { editing = nil })
+            } else {
+                ProjectRow(
+                    project: $project,
+                    hosts: store.hosts,
+                    discovery: discovery,
+                    status: tunnels.status(for: project),
+                    onToggle: { store.setActive($0, for: project.id) },
+                    onEdit: { editing = project },
+                    onDelete: { store.projects.removeAll { $0.id == project.id } }
+                )
+            }
+            Divider()
+        }
+
+        if isAdding {
+            ProjectForm(
+                project: nil,
+                onSave: { project in
+                    store.projects.append(project)
+                    isAdding = false
+                }, onCancel: { isAdding = false })
+        }
+
+        HStack {
+            Button("Add Project", systemImage: "plus") { isAdding = true }
+                .disabled(isAdding)
+            Spacer()
+            Button("Quit") { NSApplication.shared.terminate(nil) }
+        }
+    }
+
     private var header: some View {
         HStack {
-            HodorMark()
-            Text("Hodor").font(.headline).fontDesign(.rounded)
+            if showHosts {
+                Button {
+                    showHosts = false
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .buttonStyle(.borderless)
+                .help("Back to projects")
+                Text("Hosts").font(.headline).fontDesign(.rounded)
+            } else {
+                HodorMark()
+                Text("Hodor").font(.headline).fontDesign(.rounded)
+            }
             Spacer()
             if isLoading {
                 ProgressView().controlSize(.small)
             }
-            Button {
-                showHosts.toggle()
-            } label: {
-                Image(systemName: showHosts ? "server.rack.fill" : "server.rack")
+            if !showHosts {
+                Button(action: openHosts) {
+                    Image(systemName: "server.rack")
+                }
+                .buttonStyle(.borderless)
+                .help("Manage hosts")
             }
-            .buttonStyle(.borderless)
-            .help("Hosts")
             Button {
                 Task { await refreshAll() }
             } label: {
@@ -139,6 +161,12 @@ public struct ContentView: View {
             .help("Reload dev servers from all hosts")
             .disabled(isLoading)
         }
+    }
+
+    private func openHosts() {
+        // Read on every visit, so newly added aliases show up.
+        sshAliases = SSHConfig.hostAliases()
+        showHosts = true
     }
 
     /// Queries all hosts in parallel; a slow or unreachable host doesn't hold up the others.

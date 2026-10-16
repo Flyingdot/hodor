@@ -81,6 +81,13 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   - Render tests: added `brand` (mark plus glyphs) and `content-dark` (dark mode).
   - Live check: 24 tests pass. The installed app has the icon, and tunnel 4200 was restored on launch (ssh
     listening). There was no HTTP response because nothing was listening on 4200 on winterfell at the time.
+- Hosts page: the server icon used to show the hosts list above the projects with no way back. Hosts is now
+  its own page in the popup, with a back chevron in the header. Each host shows a status dot, its server count
+  (or the ssh error) and how many projects use it. Removing a host that projects use takes a second click.
+  `SSHConfig` reads the `Host` aliases from `~/.ssh/config` and suggests those not added yet (one click to add).
+  An ssh error on the projects page opens the hosts page when clicked. Render test `content-hosts` added. The
+  popup can't be opened from the agent session (AppleScript and synthetic clicks don't open it), so the agent
+  checked the snapshots and the hosts page and refresh-on-open were confirmed by hand in the installed app.
 
 ## Behaviour details
 
@@ -97,6 +104,7 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
 
 - If the app crashes (not quit/killed), its ssh children survive and hold the ports until killed by hand.
 - `running` means the ssh process is alive, not that the remote port answers.
-- Hosts must be added by name; entries from `~/.ssh/config` are not suggested yet.
+- Host suggestions only read `~/.ssh/config` itself: `Include` files are not followed, and `Host` patterns
+  (`*`, `?`, `!`) are skipped.
 - Discovery needs Linux (`ss`, `/proc`); macOS hosts would need an `lsof` fallback.
 - No launch-at-login yet (add the app to Login Items manually).
