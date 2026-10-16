@@ -38,6 +38,36 @@ struct DevServerDiscoveryTests {
         #expect(DevServerDiscovery.parse("8080\t\t\t\n22\t\t\t\n4200\t\t\t").map(\.port) == [22, 4200, 8080])
     }
 
+    @Test func parsesGitFields() {
+        let output =
+            "3000\t7\tdcp\t/home/dani/app/.claude/worktrees/feat+x/src/web\t/home/dani/app/.claude/worktrees/feat+x\t/home/dani/app/.git\tfeat/x\n"
+            + "4200\t8\tnode\t/srv/repo\t/srv/repo\t/srv/repo/.git\tHEAD\n"
+        let servers = DevServerDiscovery.parse(output)
+        #expect(
+            servers == [
+                DevServer(
+                    port: 3000, pid: 7, process: "dcp", directory: "/home/dani/app/.claude/worktrees/feat+x/src/web",
+                    worktreePath: "/home/dani/app/.claude/worktrees/feat+x", gitCommonDir: "/home/dani/app/.git", branch: "feat/x"),
+                DevServer(
+                    port: 4200, pid: 8, process: "node", directory: "/srv/repo", worktreePath: "/srv/repo",
+                    gitCommonDir: "/srv/repo/.git"),
+            ])
+        #expect(servers.map(\.repository) == ["app", "repo"])
+        #expect(servers.map(\.worktree) == ["feat+x", "repo"])
+        #expect(servers.map(\.isMainCheckout) == [false, true])
+        #expect(servers.map(\.subdirectory) == ["src/web", nil])
+    }
+
+    @Test func bareRepositoryNameDropsGitExtension() {
+        #expect(DevServer(port: 1, gitCommonDir: "/srv/app.git").repository == "app")
+    }
+
+    @Test func devServerNeedsPidAndWorktree() {
+        #expect(DevServer(port: 1, pid: 2, worktreePath: "/w").isDevServer)
+        #expect(!DevServer(port: 1, pid: 2, directory: "/home/dani").isDevServer)
+        #expect(!DevServer(port: 22).isDevServer)
+    }
+
     @Test func remoteCommandHasNoSingleQuotesInsideScript() {
         let command = DevServerDiscovery.remoteCommand
         #expect(command.hasPrefix("sh -c '") && command.hasSuffix("'"))

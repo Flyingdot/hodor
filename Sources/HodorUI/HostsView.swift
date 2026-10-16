@@ -53,6 +53,10 @@ struct HostsView: View {
                 Button("Add", action: add)
                     .disabled(newHost.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+
+            Divider()
+            Toggle("Show all listeners", isOn: Binding(get: { store.showAllServers }, set: { store.showAllServers = $0 }))
+                .help("Also list other users' processes and servers outside git worktrees.")
         }
     }
 
@@ -106,7 +110,8 @@ struct HostsView: View {
     private func caption(_ state: HostServers?, users: Int) -> String {
         var parts: [String] = []
         if let state, !state.isLoading {
-            parts.append(state.servers.count == 1 ? "1 server" : "\(state.servers.count) servers")
+            let count = state.servers.filter { store.showAllServers || $0.isDevServer }.count
+            parts.append(count == 1 ? "1 server" : "\(count) servers")
         } else {
             parts.append("Checking…")
         }

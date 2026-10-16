@@ -31,6 +31,13 @@ struct ProjectStoreTests {
         #expect(reloaded.projects == store.projects)
     }
 
+    @Test func persistsShowAllServers() {
+        let store = ProjectStore(fileURL: fileURL)
+        #expect(!store.showAllServers)
+        store.showAllServers = true
+        #expect(ProjectStore(fileURL: fileURL).showAllServers)
+    }
+
     @Test func defaultsToWinterfell() {
         #expect(ProjectStore(fileURL: fileURL).hosts == ["winterfell"])
     }

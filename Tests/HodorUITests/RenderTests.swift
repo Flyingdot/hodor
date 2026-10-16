@@ -16,9 +16,38 @@ struct RenderTests {
     struct SSHError: Error {}
 
     nonisolated static let servers = [
-        DevServer(port: 3780, pid: 101, process: "node-MainThread", directory: "/home/dani/dev/app-feature"),
-        DevServer(port: 4201, pid: 102, process: "node", directory: "/home/dani/dev/app-main"),
+        DevServer(port: 22),
+        DevServer(
+            port: 3780, pid: 101, process: "node", directory: "/home/dani/dev/app/.claude/worktrees/feature+login/web",
+            worktreePath: "/home/dani/dev/app/.claude/worktrees/feature+login", gitCommonDir: "/home/dani/dev/app/.git",
+            branch: "feature/login"),
+        DevServer(
+            port: 4201, pid: 102, process: "dotnet", directory: "/home/dani/dev/app/api", worktreePath: "/home/dani/dev/app",
+            gitCommonDir: "/home/dani/dev/app/.git", branch: "main"),
+        DevServer(port: 8000, pid: 103, process: "python3", directory: "/home/dani"),
     ]
+
+    @Test func groupsServersByWorktree() {
+        func row(showAll: Bool, hosts: [String] = ["winterfell"]) -> ProjectRow {
+            ProjectRow(
+                project: .constant(Project(name: "A", url: "https://localhost:4200")), hosts: hosts,
+                discovery: ["winterfell": HostServers(servers: Self.servers)], showAllServers: showAll, status: .inactive,
+                onToggle: { _ in }, onEdit: {}, onDelete: {})
+        }
+        let filtered = row(showAll: false).groups
+        #expect(filtered.map(\.title) == ["app (main)", "app › feature+login"])
+        #expect(filtered.map { $0.servers.map(\.port) } == [[4201], [3780]])
+        #expect(row(showAll: false).worktreeLabel(Self.servers[1]) == ":3780  ·  web  ·  node")
+        let dotnetApp = DevServer(
+            port: 5000, pid: 1, process: "Shop.Web", directory: "/w/src/Shop.Web", worktreePath: "/w")
+        #expect(row(showAll: false).worktreeLabel(dotnetApp) == ":5000  ·  src/Shop.Web")
+
+        let all = row(showAll: true).groups
+        #expect(all.map(\.title).last == "Other listeners")
+        #expect(all.last?.servers.map(\.port) == [22, 8000])
+
+        #expect(row(showAll: false, hosts: ["winterfell", "castle-black"]).groups.first?.title == "winterfell  ·  app (main)")
+    }
 
     @Test func emptyStore() throws {
         let store = ProjectStore(fileURL: fileURL)

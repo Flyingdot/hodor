@@ -100,6 +100,7 @@ public struct ContentView: View {
                     project: $project,
                     hosts: store.hosts,
                     discovery: discovery,
+                    showAllServers: store.showAllServers,
                     status: tunnels.status(for: project),
                     onToggle: { store.setActive($0, for: project.id) },
                     onEdit: { editing = project },

@@ -5,6 +5,8 @@ struct ProjectRow: View {
     @Binding var project: Project
     var hosts: [String]
     var discovery: [String: HostServers]
+    /// Lists every listener instead of only your processes inside git worktrees.
+    var showAllServers = false
     var status: TunnelStatus
     var onToggle: @MainActor @Sendable (Bool) -> Void
     var onEdit: () -> Void
@@ -41,17 +43,18 @@ struct ProjectRow: View {
 
             Picker("Server", selection: selection) {
                 Text("None").tag(ServerRef?.none)
-                if let selected = selection.wrappedValue, !isDiscovered(selected) {
-                    Text(label(host: selected.host, port: selected.port) + " (not found)").tag(ServerRef?.some(selected))
+                // A selection that is hidden by the filter or gone from discovery stays visible at the top.
+                if let selected = selection.wrappedValue, !isListed(selected) {
+                    let server = discovered(selected)
+                    Text(label(host: selected.host, port: selected.port, server: server) + (server == nil ? " (not found)" : ""))
+                        .tag(ServerRef?.some(selected))
                 }
-                ForEach(hosts, id: \.self) { host in
-                    let servers = discovery[host]?.servers ?? []
-                    if !servers.isEmpty {
-                        Divider()
-                    }
-                    ForEach(servers) { server in
-                        Text(label(host: host, port: server.port, server: server))
-                            .tag(ServerRef?.some(ServerRef(host: host, port: server.port)))
+                ForEach(groups) { group in
+                    Section(group.title) {
+                        ForEach(group.servers) { server in
+                            Text(group.isWorktree ? worktreeLabel(server) : label(port: server.port, server: server))
+                                .tag(ServerRef?.some(ServerRef(host: group.host, port: server.port)))
+                        }
                     }
                 }
             }
@@ -97,13 +100,67 @@ struct ProjectRow: View {
         )
     }
 
-    private func isDiscovered(_ ref: ServerRef) -> Bool {
-        discovery[ref.host]?.servers.contains { $0.port == ref.port } ?? false
+    /// Servers of one worktree on one host, or the remaining listeners of a host (`isWorktree` false).
+    struct ServerGroup: Identifiable {
+        var host: String
+        var title: String
+        var isWorktree: Bool
+        var servers: [DevServer]
+        var id: String { host + "\t" + title }
     }
 
-    /// The host is only shown when there is more than one to choose from.
-    private func label(host: String, port: Int, server: DevServer? = nil) -> String {
-        var parts = hosts.count > 1 ? [host] : []
+    /// Per host: one group per worktree sorted by title, then the other listeners if `showAllServers` is on.
+    var groups: [ServerGroup] {
+        hosts.flatMap { host -> [ServerGroup] in
+            let prefix = hosts.count > 1 ? host + "  ·  " : ""
+            let servers = (discovery[host]?.servers ?? []).filter { showAllServers || $0.isDevServer }
+            let byWorktree = Dictionary(grouping: servers.filter(\.isDevServer)) { $0.worktreePath }
+            // Sorted by repository, then the main checkout, then the worktree folder.
+            let sortKey = { (s: DevServer) in [s.repository ?? "", s.isMainCheckout ? "" : s.worktree ?? ""] }
+            var result = byWorktree.values
+                .sorted {
+                    sortKey($0[0]).lexicographicallyPrecedes(sortKey($1[0])) { $0.localizedStandardCompare($1) == .orderedAscending }
+                }
+                .map { ServerGroup(host: host, title: prefix + worktreeTitle($0[0]), isWorktree: true, servers: $0) }
+            let others = servers.filter { !$0.isDevServer }
+            if !others.isEmpty {
+                result.append(ServerGroup(host: host, title: prefix + "Other listeners", isWorktree: false, servers: others))
+            }
+            return result
+        }
+    }
+
+    /// "repo › worktree (branch)". The worktree is left out for the main checkout, the branch when the worktree
+    /// folder is already named after it (with "/" written as "+").
+    private func worktreeTitle(_ server: DevServer) -> String {
+        var title = server.repository ?? server.worktree ?? "?"
+        if !server.isMainCheckout, let worktree = server.worktree {
+            title += " › " + worktree
+        }
+        if let branch = server.branch, branch.replacingOccurrences(of: "/", with: "+") != server.worktree {
+            title += " (\(branch))"
+        }
+        return title
+    }
+
+    private func discovered(_ ref: ServerRef) -> DevServer? {
+        discovery[ref.host]?.servers.first { $0.port == ref.port }
+    }
+
+    private func isListed(_ ref: ServerRef) -> Bool {
+        discovered(ref).map { showAllServers || $0.isDevServer } ?? false
+    }
+
+    /// ":port · subdirectory · process", for a server listed under its worktree. The process is left out when
+    /// the subdirectory already ends with it, as for .NET apps built into their own executable.
+    func worktreeLabel(_ server: DevServer) -> String {
+        let process = server.process.flatMap { server.subdirectory?.hasSuffix("/" + $0) == true ? nil : $0 }
+        return [":\(server.port)", server.subdirectory, process].compactMap { $0 }.joined(separator: "  ·  ")
+    }
+
+    /// ":port · process · directory". The host is only shown when given and there is more than one.
+    private func label(host: String? = nil, port: Int, server: DevServer? = nil) -> String {
+        var parts = hosts.count > 1 ? [host].compactMap { $0 } : []
         parts.append(":\(port)")
         if let process = server?.process, !process.isEmpty { parts.append(process) }
         if let directory = server?.directory, !directory.isEmpty { parts.append(abbreviate(directory)) }

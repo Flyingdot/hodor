@@ -88,13 +88,29 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   An ssh error on the projects page opens the hosts page when clicked. Render test `content-hosts` added. The
   popup can't be opened from the agent session (AppleScript and synthetic clicks don't open it), so the agent
   checked the snapshots and the hosts page and refresh-on-open were confirmed by hand in the installed app.
+- Server picker by worktree: winterfell listed ~40 listeners, most of them with the same long path. Discovery now
+  also runs one `git rev-parse` per listener (worktree top level, common git dir, branch), and the process is the
+  executable's name (`/proc/<pid>/exe`), because `comm` is cut at 15 characters (`Snapbean.TeamsM`). The picker
+  only lists your own processes inside a git worktree, in one section per worktree (`repo › worktree (branch)`),
+  each item `:port · subdirectory · process`. "Show all listeners" on the hosts page brings back the rest under
+  "Other listeners". Live: 26 of 39 listeners on winterfell remain, in two worktree sections; tunnel 4200
+  restored on launch, HTTP 200. The open menu can't be rendered offscreen (SwiftUI fills it only while it
+  tracks), so the grouping is checked through `ProjectRow.groups` in a test.
 
 ## Behaviour details
 
 - Discovery lists every TCP listener the tunnel can reach on the remote (`127.0.0.1`, `0.0.0.0`, `*`, `[::]`,
   `[::1]`). Sockets bound to other addresses (Tailscale IP, `127.0.0.53`, docker bridge) can't be reached via
   `localhost` and are left out. Process name and directory are only visible for your own processes.
-- Process names come from `/proc/<pid>/comm`, so node shows up as `node-MainThread`.
+- Process names come from the executable (`/proc/<pid>/exe`), falling back to `/proc/<pid>/comm`. .NET apps
+  built with an apphost show their own name, not `dotnet`; the label drops it when the subdirectory ends with it.
+- The picker hides listeners without a pid (other users, root) and those outside a git worktree, unless "Show all
+  listeners" is on (`showAllServers` in the config). A selected server that is hidden still shows at the top.
+- Worktree sections are titled `repo › worktree`, with the branch in brackets unless the folder is named after it
+  (`/` written as `+`). The main checkout shows `repo (branch)`.
+- Aspire: `dcp` (Aspire's orchestrator) listens on the ports declared in the AppHost and proxies them to the
+  services, which get random ports (30000+) on every run. Pick the dcp port to survive restarts. All dcp ports
+  share the AppHost directory, so the picker can't tell which service is behind which.
 - Discovery runs on the first open (SwiftUI `.task`), on every later open (the popup window becomes key,
   `NSWindow.didBecomeKeyNotification`) and on the reload button. An open while a query is still running is skipped.
 - A tunnel that dies (sleep, network change, port in use) shows the ssh error and is retried every 5 s while active.

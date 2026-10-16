@@ -45,18 +45,60 @@ public struct Project: Codable, Identifiable, Hashable, Sendable {
 public struct DevServer: Hashable, Identifiable, Sendable {
     public var port: Int
     public var pid: Int?
-    /// Process name, e.g. "node".
+    /// Executable name, e.g. "node" or "dcp".
     public var process: String?
-    /// Working directory of the process, usually the worktree.
+    /// Working directory of the process, usually somewhere in a worktree.
     public var directory: String?
+    /// Top level of the git worktree that contains `directory`.
+    public var worktreePath: String?
+    /// The repository's shared git directory, e.g. /home/dani/dev/app/.git for all of its worktrees.
+    public var gitCommonDir: String?
+    /// Checked out branch. Nil when HEAD is detached.
+    public var branch: String?
 
     public var id: Int { port }
 
-    public init(port: Int, pid: Int? = nil, process: String? = nil, directory: String? = nil) {
+    public init(
+        port: Int, pid: Int? = nil, process: String? = nil, directory: String? = nil,
+        worktreePath: String? = nil, gitCommonDir: String? = nil, branch: String? = nil
+    ) {
         self.port = port
         self.pid = pid
         self.process = process
         self.directory = directory
+        self.worktreePath = worktreePath
+        self.gitCommonDir = gitCommonDir
+        self.branch = branch
+    }
+
+    /// Whether the listener is likely a dev server: one of your processes, running inside a git worktree.
+    public var isDevServer: Bool {
+        pid != nil && worktreePath != nil
+    }
+
+    /// Repository name: the folder holding `.git`, or a bare repo's name without `.git`.
+    public var repository: String? {
+        guard let gitCommonDir else { return nil }
+        let url = URL(fileURLWithPath: gitCommonDir)
+        if url.lastPathComponent == ".git" { return url.deletingLastPathComponent().lastPathComponent }
+        return url.deletingPathExtension().lastPathComponent
+    }
+
+    /// Folder name of the worktree.
+    public var worktree: String? {
+        worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent }
+    }
+
+    /// Whether the worktree is the repository's main checkout rather than a linked worktree.
+    public var isMainCheckout: Bool {
+        guard let worktreePath, let gitCommonDir else { return false }
+        return URL(fileURLWithPath: gitCommonDir).deletingLastPathComponent().path == worktreePath
+    }
+
+    /// `directory` relative to the worktree. Nil at the worktree's top level or outside a worktree.
+    public var subdirectory: String? {
+        guard let worktreePath, let directory, directory.hasPrefix(worktreePath + "/") else { return nil }
+        return String(directory.dropFirst(worktreePath.count + 1))
     }
 }
 

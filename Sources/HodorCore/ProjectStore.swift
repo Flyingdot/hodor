@@ -6,6 +6,7 @@ struct Config: Codable {
     /// Single host of configs written before multi-host support. Only read, never written.
     var host: String?
     var projects: [Project]
+    var showAllServers: Bool?
 }
 
 /// Persists the ssh hosts and project list as JSON in ~/Library/Application Support/Hodor.
@@ -14,6 +15,8 @@ struct Config: Codable {
 public final class ProjectStore {
     public private(set) var hosts: [String] { didSet { save() } }
     public var projects: [Project] { didSet { save() } }
+    /// Whether the server picker lists every listener, not just your processes inside git worktrees.
+    public var showAllServers: Bool { didSet { save() } }
     /// Called after every change, once it is saved.
     @ObservationIgnored public var onChange: (() -> Void)?
 
@@ -24,6 +27,7 @@ public final class ProjectStore {
         let config = (try? Data(contentsOf: fileURL)).flatMap { try? JSONDecoder().decode(Config.self, from: $0) }
         let legacyHost = config?.host ?? "winterfell"
         hosts = config?.hosts ?? [legacyHost]
+        showAllServers = config?.showAllServers ?? false
         projects = (config?.projects ?? []).map { project in
             var project = project
             if project.host == nil && project.remotePort != nil {
@@ -78,7 +82,8 @@ public final class ProjectStore {
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(Config(hosts: hosts, projects: projects)).write(to: fileURL, options: .atomic)
+            try encoder.encode(Config(hosts: hosts, projects: projects, showAllServers: showAllServers)).write(
+                to: fileURL, options: .atomic)
         } catch {
             NSLog("Hodor: failed to save config: \(error)")
         }
