@@ -49,6 +49,18 @@ struct RenderTests {
         #expect(row(showAll: false, hosts: ["winterfell", "castle-black"]).groups.first?.title == "winterfell  ·  app (main)")
     }
 
+    @Test func namesTheSelectedWorktree() {
+        func row(port: Int) -> ProjectRow {
+            ProjectRow(
+                project: .constant(Project(name: "A", url: "https://localhost:4200", host: "winterfell", remotePort: port)),
+                hosts: ["winterfell"], discovery: ["winterfell": HostServers(servers: Self.servers)], showAllServers: true,
+                status: .inactive, onToggle: { _ in }, onEdit: {}, onDelete: {})
+        }
+        #expect(row(port: 3780).selectedWorktree == "app › feature+login")
+        #expect(row(port: 8000).selectedWorktree == nil)
+        #expect(row(port: 9999).selectedWorktree == nil)
+    }
+
     @Test func emptyStore() throws {
         let store = ProjectStore(fileURL: fileURL)
         let view = ContentView(

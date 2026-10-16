@@ -60,6 +60,15 @@ struct ProjectRow: View {
             }
             .labelsHidden()
 
+            // The closed picker only shows the item, so name its worktree below.
+            if let worktree = selectedWorktree {
+                Text(worktree)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
             if case .failed(let message) = status {
                 Text(message)
                     .font(.caption)
@@ -141,6 +150,12 @@ struct ProjectRow: View {
             title += " (\(branch))"
         }
         return title
+    }
+
+    /// Section title of the selected server, e.g. "app › feature+login". Nil when it's not in a worktree.
+    var selectedWorktree: String? {
+        guard let ref = selection.wrappedValue, let server = discovered(ref), server.isDevServer else { return nil }
+        return (hosts.count > 1 ? ref.host + "  ·  " : "") + worktreeTitle(server)
     }
 
     private func discovered(_ ref: ServerRef) -> DevServer? {
