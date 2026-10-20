@@ -100,7 +100,8 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   main thread in `lstat`: `DevServer.repository`/`worktree`/`isMainCheckout` built `URL(fileURLWithPath:)` from
   the remote paths, and without a directory hint Foundation stats them on the Mac, where `/home` is autofs. The
   picker's `groups` does this for every server, several times per render, and every change re-renders all rows.
-  With `isDirectory: true`, a re-render of 3 projects with winterfell's servers went from ~520 ms to ~4 ms.
+  Remote paths are now handled as strings (`NSString` path methods), so nothing touches the local file system.
+  A re-render of 3 projects with winterfell's servers went from ~520 ms to ~4 ms.
   Live: tunnels 4200, 5001 and 4300 restored on launch, HTTP 200 on 4300 (nothing was listening on 4200 and 5001
   on winterfell).
 
