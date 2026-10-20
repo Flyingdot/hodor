@@ -1,28 +1,72 @@
 import Foundation
 
-/// A fixed local URL (e.g. https://localhost:4200) that gets forwarded to one dev server on a remote host.
+/// A fixed local URL (e.g. https://localhost:4200) that gets forwarded to a dev server on a remote host,
+/// plus optional extra ports to the same host.
 public struct Project: Codable, Identifiable, Hashable, Sendable {
     public var id: UUID
     public var name: String
     public var url: String
-    /// ssh host of the selected dev server.
+    /// ssh host that all forwards of the project go to.
     public var host: String?
-    /// Port of the selected dev server on `host`.
+    /// Port of the selected dev server on `host`, for the URL's port.
     public var remotePort: Int?
+    /// Forwards the URL's port to the same port on `host`, without picking a server.
+    public var samePort: Bool
+    /// Ports forwarded in addition to the URL's port.
+    public var extraForwards: [Forward]
     public var isActive: Bool
 
-    public init(id: UUID = UUID(), name: String, url: String, host: String? = nil, remotePort: Int? = nil, isActive: Bool = false) {
+    public init(
+        id: UUID = UUID(), name: String, url: String, host: String? = nil, remotePort: Int? = nil, samePort: Bool = false,
+        extraForwards: [Forward] = [], isActive: Bool = false
+    ) {
         self.id = id
         self.name = name
         self.url = url
         self.host = host
         self.remotePort = remotePort
+        self.samePort = samePort
+        self.extraForwards = extraForwards
         self.isActive = isActive
     }
 
-    /// Whether a dev server is selected, i.e. the project can be activated.
-    public var hasServer: Bool {
-        host != nil && remotePort != nil
+    /// Configs written before extra forwards have neither `samePort` nor `extraForwards`.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        url = try container.decode(String.self, forKey: .url)
+        host = try container.decodeIfPresent(String.self, forKey: .host)
+        remotePort = try container.decodeIfPresent(Int.self, forKey: .remotePort)
+        samePort = try container.decodeIfPresent(Bool.self, forKey: .samePort) ?? false
+        extraForwards = try container.decodeIfPresent([Forward].self, forKey: .extraForwards) ?? []
+        isActive = try container.decode(Bool.self, forKey: .isActive)
+    }
+
+    /// The URL's port first, then the extra forwards. Without a port in the URL, only the extra forwards.
+    public var forwards: [Forward] {
+        guard let localPort else { return extraForwards }
+        return [Forward(localPort: localPort, samePort: samePort, remotePort: remotePort)] + extraForwards
+    }
+
+    /// Whether there is a host and every forward has a target, i.e. the project can be activated.
+    public var isComplete: Bool {
+        host != nil && localPort != nil && forwards.allSatisfy { $0.target != nil }
+    }
+
+    /// Sets the picked server of the forward at `index` in `forwards`. All forwards go through one ssh connection,
+    /// so picking a server on another host clears the servers picked for the other forwards.
+    public mutating func pick(_ port: Int?, on host: String?, forwardAt index: Int) {
+        if let host, host != self.host {
+            self.host = host
+            remotePort = nil
+            extraForwards = extraForwards.map { Forward(localPort: $0.localPort, samePort: $0.samePort) }
+        }
+        if localPort != nil && index == 0 {
+            remotePort = port
+        } else {
+            extraForwards[index - (localPort == nil ? 0 : 1)].remotePort = port
+        }
     }
 
     /// Local port taken from the URL. Falls back to the scheme's default port.
@@ -38,6 +82,42 @@ public struct Project: Codable, Identifiable, Hashable, Sendable {
         case "http": return 80
         default: return nil
         }
+    }
+}
+
+/// One local port of a project and the port it goes to on the project's host.
+public struct Forward: Codable, Hashable, Sendable {
+    public var localPort: Int
+    /// Forwards to the same port on the remote, without picking a server.
+    public var samePort: Bool
+    /// Port of the picked dev server. Unused when `samePort` is on.
+    public var remotePort: Int?
+
+    public init(localPort: Int, samePort: Bool = true, remotePort: Int? = nil) {
+        self.localPort = localPort
+        self.samePort = samePort
+        self.remotePort = remotePort
+    }
+
+    /// Remote port the tunnel forwards to. Nil while no server is picked.
+    public var target: Int? {
+        samePort ? localPort : remotePort
+    }
+
+    /// Parses "5000", "10000-10002" or a list of both separated by commas or spaces.
+    /// Nil for anything else, a port outside 1–65535 or a range of more than 100 ports.
+    public static func parsePorts(_ text: String) -> [Int]? {
+        let parts = text.split { $0 == "," || $0.isWhitespace }
+        guard !parts.isEmpty else { return nil }
+        var ports: [Int] = []
+        for part in parts {
+            let bounds = part.split(separator: "-", omittingEmptySubsequences: false).map { Int($0) }
+            guard bounds.count <= 2, let low = bounds.first ?? nil, let high = bounds.last ?? nil,
+                1 <= low, low <= high, high <= 65535, high - low < 100
+            else { return nil }
+            ports += low...high
+        }
+        return ports
     }
 }
 

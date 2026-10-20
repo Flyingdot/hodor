@@ -1,16 +1,34 @@
 import Foundation
 import Observation
 
-/// Runs one `ssh -N -L` process per active project.
+/// Runs one `ssh -N` process per active project, with one `-L` per forward.
 @MainActor
 @Observable
 public final class TunnelManager {
     public private(set) var statuses: [UUID: TunnelStatus] = [:]
 
-    private struct Spec: Equatable {
-        var localPort: Int
-        var remotePort: Int
+    struct Spec: Equatable {
         var host: String
+        /// Local and remote port of each forward.
+        var ports: [Ports]
+
+        struct Ports: Equatable {
+            var local: Int
+            var remote: Int
+        }
+
+        var arguments: [String] {
+            [
+                "-N", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+                "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
+            ] + ports.flatMap { ["-L", "\($0.local):localhost:\($0.remote)"] } + [host]
+        }
+
+        init?(_ project: Project) {
+            guard project.isComplete, let host = project.host else { return nil }
+            self.host = host
+            ports = project.forwards.compactMap { forward in forward.target.map { Ports(local: forward.localPort, remote: $0) } }
+        }
     }
 
     /// One entry per desired tunnel. `process` is nil while waiting for a retry.
@@ -30,13 +48,11 @@ public final class TunnelManager {
         statuses[project.id] ?? .inactive
     }
 
-    /// Starts, restarts or stops tunnels so that exactly the active projects with a selected server are forwarded.
+    /// Starts, restarts or stops tunnels so that exactly the active and complete projects are forwarded.
     public func sync(projects: [Project]) {
         var desired: [UUID: Spec] = [:]
         for project in projects where project.isActive {
-            if let local = project.localPort, let remote = project.remotePort, let host = project.host {
-                desired[project.id] = Spec(localPort: local, remotePort: remote, host: host)
-            }
+            desired[project.id] = Spec(project)
         }
         for (id, tunnel) in tunnels where desired[id] != tunnel.spec {
             stop(id)
@@ -55,11 +71,7 @@ public final class TunnelManager {
     private func start(_ id: UUID, _ spec: Spec) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = [
-            "-N", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
-            "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
-            "-L", "\(spec.localPort):localhost:\(spec.remotePort)", spec.host,
-        ]
+        process.arguments = spec.arguments
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
         let stderr = Pipe()
