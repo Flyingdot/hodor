@@ -53,8 +53,8 @@ struct ProjectForm: View {
             Text("Additional ports").font(.caption).foregroundStyle(.secondary)
             ForEach($extraForwards, id: \.localPort) { $forward in
                 portRow(forward.localPort, samePort: $forward.samePort) {
-                    Button {
-                        extraForwards.removeAll { $0.localPort == forward.localPort }
+                    Button { [port = forward.localPort] in
+                        extraForwards.removeAll { $0.localPort == port }
                     } label: {
                         Image(systemName: "minus.circle")
                     }

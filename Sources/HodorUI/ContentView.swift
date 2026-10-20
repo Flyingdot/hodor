@@ -104,7 +104,8 @@ public struct ContentView: View {
                     status: tunnels.status(for: project),
                     onToggle: { store.setActive($0, for: project.id) },
                     onEdit: { editing = project },
-                    onDelete: { store.projects.removeAll { $0.id == project.id } }
+                    // Capture the id: reading `project` inside removeAll would read store.projects while it's written.
+                    onDelete: { [id = project.id] in store.projects.removeAll { $0.id == id } }
                 )
             }
             Divider()
