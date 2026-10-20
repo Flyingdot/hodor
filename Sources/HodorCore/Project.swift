@@ -59,13 +59,20 @@ public struct Project: Codable, Identifiable, Hashable, Sendable {
     public mutating func pick(_ port: Int?, on host: String?, forwardAt index: Int) {
         if let host, host != self.host {
             self.host = host
-            remotePort = nil
-            extraForwards = extraForwards.map { Forward(localPort: $0.localPort, samePort: $0.samePort) }
+            clearPicks()
         }
         if localPort != nil && index == 0 {
             remotePort = port
         } else {
             extraForwards[index - (localPort == nil ? 0 : 1)].remotePort = port
+        }
+    }
+
+    /// Clears the picked server of every forward. Same-port forwards are unaffected.
+    public mutating func clearPicks() {
+        remotePort = nil
+        for index in extraForwards.indices {
+            extraForwards[index].remotePort = nil
         }
     }
 
@@ -99,13 +106,21 @@ public struct Forward: Codable, Hashable, Sendable {
         self.remotePort = remotePort
     }
 
+    /// A hand-written `{"localPort": 10000}` is a same-port forward.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        localPort = try container.decode(Int.self, forKey: .localPort)
+        samePort = try container.decodeIfPresent(Bool.self, forKey: .samePort) ?? true
+        remotePort = try container.decodeIfPresent(Int.self, forKey: .remotePort)
+    }
+
     /// Remote port the tunnel forwards to. Nil while no server is picked.
     public var target: Int? {
         samePort ? localPort : remotePort
     }
 
     /// Parses "5000", "10000-10002" or a list of both separated by commas or spaces.
-    /// Nil for anything else, a port outside 1–65535 or a range of more than 100 ports.
+    /// Nil for anything else, a port outside 1–65535 or more than 100 ports in total.
     public static func parsePorts(_ text: String) -> [Int]? {
         let parts = text.split { $0 == "," || $0.isWhitespace }
         guard !parts.isEmpty else { return nil }
@@ -117,7 +132,7 @@ public struct Forward: Codable, Hashable, Sendable {
             else { return nil }
             ports += low...high
         }
-        return ports
+        return ports.count <= 100 ? ports : nil
     }
 }
 

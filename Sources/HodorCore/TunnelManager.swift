@@ -133,12 +133,21 @@ final class StderrBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private var text = ""
 
+    /// ssh logs every refused connection to a forward, so only the tail is kept.
+    static let limit = 8192
+
     func append(_ data: Data) {
-        lock.withLock { text += String(decoding: data, as: UTF8.self) }
+        lock.withLock {
+            text += String(decoding: data, as: UTF8.self)
+            if text.utf8.count > Self.limit {
+                text = String(text.suffix(Self.limit / 2))
+            }
+        }
     }
 
-    /// The `bind …` lines that name a busy port, since ssh ends those with a generic "Could not request local
-    /// forwarding.". Otherwise the last line.
+    /// The last line. When ssh gives up with the generic "Could not request local forwarding.", the `bind …`
+    /// lines before it, which name the busy port. A bind line alone isn't a failure: ssh still binds the
+    /// other address (IPv4 or IPv6) and keeps running.
     var message: String? {
         let lines = lock.withLock {
             text.split(whereSeparator: \.isNewline)
@@ -146,6 +155,7 @@ final class StderrBuffer: @unchecked Sendable {
                 .filter { !$0.isEmpty }
         }
         let bind = lines.filter { $0.hasPrefix("bind ") }
-        return bind.isEmpty ? lines.last : bind.joined(separator: "\n")
+        guard lines.last == "Could not request local forwarding.", !bind.isEmpty else { return lines.last }
+        return bind.joined(separator: "\n")
     }
 }

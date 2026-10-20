@@ -38,20 +38,23 @@ struct ProjectRow: View {
                     .toggleStyle(.switch)
                     .tint(.hodorLight)
                     .labelsHidden()
-                    .disabled(!project.isComplete)
+                    // An active project that lost a target stays switchable, so it can be turned off.
+                    .disabled(!project.isActive && !project.isComplete)
             }
 
             let forwards = project.forwards
             let picked = forwards.indices.filter { !forwards[$0].samePort }
+            // Grouping sorts every server, so it's done once for all pickers.
+            let serverGroups = picked.isEmpty ? [] : groups
             ForEach(picked, id: \.self) { index in
                 if forwards.count == 1 {
-                    serverPicker(forwardAt: index)
+                    serverPicker(forwardAt: index, groups: serverGroups)
                 } else {
                     HStack {
                         Text(String(forwards[index].localPort) + " →")
                             .monospacedDigit()
                             .frame(width: 56, alignment: .trailing)
-                        serverPicker(forwardAt: index)
+                        serverPicker(forwardAt: index, groups: serverGroups)
                     }
                 }
             }
@@ -111,16 +114,18 @@ struct ProjectRow: View {
         Binding(
             get: {
                 let forwards = project.forwards
-                guard forwards.indices.contains(index), !forwards[index].samePort, let host = project.host,
-                    let port = forwards[index].remotePort
-                else { return nil }
-                return ServerRef(host: host, port: port)
+                return forwards.indices.contains(index) ? ref(of: forwards[index]) : nil
             },
             set: { project.pick($0?.port, on: $0?.host, forwardAt: index) }
         )
     }
 
-    private func serverPicker(forwardAt index: Int) -> some View {
+    private func ref(of forward: Forward) -> ServerRef? {
+        guard !forward.samePort, let host = project.host, let port = forward.remotePort else { return nil }
+        return ServerRef(host: host, port: port)
+    }
+
+    private func serverPicker(forwardAt index: Int, groups: [ServerGroup]) -> some View {
         let selection = selection(at: index)
         return Picker("Server", selection: selection) {
             Text("None").tag(ServerRef?.none)
@@ -220,8 +225,8 @@ struct ProjectRow: View {
     /// Section titles of the selected servers, e.g. "app › feature+login", each once. Nil when none is in a worktree.
     var selectedWorktree: String? {
         var titles: [String] = []
-        for index in project.forwards.indices {
-            guard let ref = selection(at: index).wrappedValue, let server = discovered(ref), server.isDevServer else { continue }
+        for forward in project.forwards {
+            guard let ref = ref(of: forward), let server = discovered(ref), server.isDevServer else { continue }
             let title = worktreeTitle(server)
             if !titles.contains(title) { titles.append(title) }
         }
