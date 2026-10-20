@@ -62,5 +62,12 @@ struct ProjectTests {
         #expect(Forward.parsePorts("10000-") == nil)
         #expect(Forward.parsePorts("1-2-3") == nil)
         #expect(Forward.parsePorts("10000-20000") == nil)
+        #expect(Forward.parsePorts("1-100")?.count == 100)
+        #expect(Forward.parsePorts("1-100 200") == nil)
+    }
+
+    @Test func handWrittenForwardIsSamePort() throws {
+        let forward = try JSONDecoder().decode(Forward.self, from: Data(#"{"localPort": 10001}"#.utf8))
+        #expect(forward == Forward(localPort: 10001))
     }
 }

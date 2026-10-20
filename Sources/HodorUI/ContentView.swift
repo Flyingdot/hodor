@@ -93,6 +93,8 @@ public struct ContentView: View {
                     project: project,
                     onSave: { updated in
                         project = withDefaultHost(updated)
+                        // New ports may clash with another active project, which activating turns off.
+                        if updated.isActive { store.setActive(true, for: updated.id) }
                         editing = nil
                     }, onCancel: { editing = nil })
             } else {

@@ -50,8 +50,7 @@ public final class ProjectStore {
             guard project.host == host else { return project }
             var project = project
             project.host = nil
-            project.remotePort = nil
-            project.extraForwards = project.extraForwards.map { Forward(localPort: $0.localPort, samePort: $0.samePort) }
+            project.clearPicks()
             project.isActive = false
             return project
         }

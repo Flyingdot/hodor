@@ -50,6 +50,18 @@ struct TunnelManagerTests {
                 """.utf8))
         #expect(busy.message == "bind [127.0.0.1]:10000: Address already in use")
 
+        // ssh bound the other address and kept running, so the bind line is not the reason it exited.
+        let later = StderrBuffer()
+        later.append(Data("bind [127.0.0.1]:4200: Address already in use\nTimeout, server winterfell not responding.\n".utf8))
+        #expect(later.message == "Timeout, server winterfell not responding.")
+
+        let chatty = StderrBuffer()
+        for _ in 0..<1000 {
+            chatty.append(Data("channel 2: open failed: connect failed: Connection refused\n".utf8))
+        }
+        chatty.append(Data("Connection to winterfell closed by remote host.\n".utf8))
+        #expect(chatty.message == "Connection to winterfell closed by remote host.")
+
         let other = StderrBuffer()
         other.append(Data("ssh: Could not resolve hostname x: nodename nor servname provided\n".utf8))
         #expect(other.message == "ssh: Could not resolve hostname x: nodename nor servname provided")

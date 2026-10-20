@@ -138,8 +138,9 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   most 100 per range, as "Same port". The project can be activated once it has a host and every forward a target.
 - All forwards share the project's host and one ssh process. Picking a server on another host clears the other
   picks. Without any picker, the row shows a host picker, unless there is only one host, which is set on save.
-- One busy local port fails the whole project (`ExitOnForwardFailure`), and activating a project turns off every
-  other project that shares any local port with it.
+- One busy local port fails the whole project (`ExitOnForwardFailure`), and the error shows ssh's `bind …` line
+  that names the port. Activating a project, or saving an active one, turns off every other project that shares
+  any local port with it.
 
 ## Known limitations / ideas
 
