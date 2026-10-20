@@ -38,6 +38,24 @@ struct TunnelManagerTests {
         #expect(manager.statuses.isEmpty)
     }
 
+    @Test func errorNamesTheBusyPort() {
+        let busy = StderrBuffer()
+        busy.append(
+            Data(
+                """
+                bind [127.0.0.1]:10000: Address already in use
+                channel_setup_fwd_listener_tcpip: cannot listen to port: 10000
+                Could not request local forwarding.
+
+                """.utf8))
+        #expect(busy.message == "bind [127.0.0.1]:10000: Address already in use")
+
+        let other = StderrBuffer()
+        other.append(Data("ssh: Could not resolve hostname x: nodename nor servname provided\n".utf8))
+        #expect(other.message == "ssh: Could not resolve hostname x: nodename nor servname provided")
+        #expect(StderrBuffer().message == nil)
+    }
+
     @Test func forwardsEveryPortThroughOneConnection() throws {
         let project = Project(
             name: "A", url: "https://localhost:4200", host: "winterfell", remotePort: 4201,
