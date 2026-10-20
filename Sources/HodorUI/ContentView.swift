@@ -92,7 +92,7 @@ public struct ContentView: View {
                 ProjectForm(
                     project: project,
                     onSave: { updated in
-                        project = updated
+                        project = withDefaultHost(updated)
                         editing = nil
                     }, onCancel: { editing = nil })
             } else {
@@ -114,7 +114,7 @@ public struct ContentView: View {
             ProjectForm(
                 project: nil,
                 onSave: { project in
-                    store.projects.append(project)
+                    store.projects.append(withDefaultHost(project))
                     isAdding = false
                 }, onCancel: { isAdding = false })
         }
@@ -162,6 +162,14 @@ public struct ContentView: View {
             .help("Reload dev servers from all hosts")
             .disabled(isLoading)
         }
+    }
+
+    /// Same-port forwards need a host without a picked server. With a single host, that's the one.
+    private func withDefaultHost(_ project: Project) -> Project {
+        guard project.host == nil, store.hosts.count == 1 else { return project }
+        var project = project
+        project.host = store.hosts[0]
+        return project
     }
 
     private func openHosts() {

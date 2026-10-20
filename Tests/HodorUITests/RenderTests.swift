@@ -107,6 +107,37 @@ struct RenderTests {
         #expect(size.height > 0)
     }
 
+    @Test(arguments: [
+        (
+            "row-forwards",
+            Project(
+                name: "App + storage", url: "https://localhost:4200", host: "winterfell", remotePort: 3780,
+                extraForwards: [
+                    Forward(localPort: 5000, samePort: false, remotePort: 4201), Forward(localPort: 8000),
+                    Forward(localPort: 10000), Forward(localPort: 10001),
+                ])
+        ),
+        ("row-same-port", Project(name: "Storage", url: "http://localhost:8000", host: "winterfell", samePort: true)),
+    ])
+    func forwardsRow(name: String, project: Project) throws {
+        let row = ProjectRow(
+            project: .constant(project), hosts: ["winterfell", "castle-black"],
+            discovery: ["winterfell": HostServers(servers: Self.servers)], status: .inactive,
+            onToggle: { _ in }, onEdit: {}, onDelete: {})
+        #expect(row.notListening(project.forwards.filter(\.samePort).map(\.localPort)).count == (name == "row-forwards" ? 2 : 0))
+        let size = try render(row.padding().frame(width: 420), as: name)
+        #expect(size.height > 0)
+    }
+
+    @Test func projectFormWithForwards() throws {
+        let project = Project(
+            name: "App + storage", url: "https://localhost:4200",
+            extraForwards: [Forward(localPort: 5000, samePort: false), Forward(localPort: 10000), Forward(localPort: 10001)])
+        let form = ProjectForm(project: project, onSave: { _ in }, onCancel: {})
+        let size = try render(form.padding().frame(width: 420), as: "form-forwards")
+        #expect(size.height > 0)
+    }
+
     @Test func hostsPanel() throws {
         let store = ProjectStore(fileURL: fileURL)
         store.addHost("castle-black")
@@ -175,6 +206,9 @@ struct RenderTests {
         host.frame.size = host.fittingSize
         let window = NSWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
         window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        // State set in onAppear (the form's fields) can change the size after the first layout.
+        host.frame.size = host.fittingSize
         host.layoutSubtreeIfNeeded()
         let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: rep)

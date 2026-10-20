@@ -18,7 +18,8 @@ running on `winterfell`, so switching between worktrees is one click instead of 
 |---|---|---|
 | UI | SwiftUI `MenuBarExtra` (`.window` style), macOS 14+ | Native, no dependencies |
 | Build | Swift package + `scripts/bundle.sh` → `build/Hodor.app` | No Xcode project to maintain |
-| Tunnels | One `ssh -N -L <local>:localhost:<remote> <host>` child process per active project | Same thing as the manual workflow, reuses `~/.ssh/config` and the agent |
+| Tunnels | One `ssh -N -L <local>:localhost:<remote> … <host>` child process per active project, one `-L` per forward | Same thing as the manual workflow, reuses `~/.ssh/config` and the agent |
+| Extra ports | A project forwards its URL's port plus a list of extra ports, all to the project's host. Each one either picks a server or goes to the same port | Some setups need several ports (e.g. Azurite on 10000–10002); 1:1 needs no picker |
 | Discovery | `ssh <host> ss -Htlnp` + `/proc/<pid>/cwd` | Port plus worktree directory gives a useful label |
 | Persistence | JSON at `~/Library/Application Support/Hodor/config.json` | Easy to inspect and hand-edit |
 | Hosts | List of ssh hosts in the config (default `[winterfell]`), host stored per project next to `remotePort` | Projects on different machines at once; ssh config does the rest |
@@ -104,6 +105,12 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   A re-render of 3 projects with winterfell's servers went from ~520 ms to ~4 ms.
   Live: tunnels 4200, 5001 and 4300 restored on launch, HTTP 200 on 4300 (nothing was listening on 4200 and 5001
   on winterfell).
+- Several ports per project (like `ssh -N -L 10000:localhost:10000 -L 10001:… winterfell`): `Project` keeps
+  `url`/`host`/`remotePort` and gains `samePort` and `extraForwards: [Forward]`. Old configs decode with defaults.
+  `TunnelManager` puts one `-L` per forward into the project's ssh process. Render tests `row-forwards`,
+  `row-same-port` and `form-forwards` added. The render helper lays out twice, since the form fills its fields in
+  `onAppear`. Live: 43 tests pass, the four existing tunnels were restored from the old config, HTTP 200/200/302
+  on 5001/4300/5100 (nothing listening on 4200 on winterfell). A multi-port project was not tried in the app.
 
 ## Behaviour details
 
@@ -125,6 +132,14 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   `NSWindow.didBecomeKeyNotification`) and on the reload button. An open while a query is still running is skipped.
 - A tunnel that dies (sleep, network change, port in use) shows the ssh error and is retried every 5 s while active.
 - Changing the server of an active project restarts its tunnel immediately.
+- Forwards: the URL's port comes first, then the extra ports (`extraForwards`). Each is "Pick server" (a picker in
+  the row, labeled `4200 →` once there is more than one forward) or "Same port" (listed on one `⇄` line, ports
+  nobody listens on remotely are dimmed and named). The form adds ports as `5000`, `10000-10002` or a list, at
+  most 100 per range, as "Same port". The project can be activated once it has a host and every forward a target.
+- All forwards share the project's host and one ssh process. Picking a server on another host clears the other
+  picks. Without any picker, the row shows a host picker, unless there is only one host, which is set on save.
+- One busy local port fails the whole project (`ExitOnForwardFailure`), and activating a project turns off every
+  other project that shares any local port with it.
 
 ## Known limitations / ideas
 

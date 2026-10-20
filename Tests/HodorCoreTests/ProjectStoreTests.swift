@@ -20,6 +20,19 @@ struct ProjectStoreTests {
         #expect(store.projects.map(\.isActive) == [false, true, true])
     }
 
+    @Test func activatingDeactivatesProjectsSharingAnyPort() {
+        let store = ProjectStore(fileURL: fileURL)
+        let a = Project(
+            name: "A", url: "https://localhost:4200", remotePort: 4201, extraForwards: [Forward(localPort: 10000)],
+            isActive: true)
+        let b = Project(name: "B", url: "http://localhost:10000", samePort: true)
+        store.projects = [a, b]
+
+        store.setActive(true, for: b.id)
+
+        #expect(store.projects.map(\.isActive) == [false, true])
+    }
+
     @Test func persistsAndReloads() {
         let store = ProjectStore(fileURL: fileURL)
         store.addHost("example")
@@ -62,6 +75,8 @@ struct ProjectStoreTests {
         #expect(store.hosts == ["castle-black"])
         #expect(store.projects.map(\.host) == ["castle-black", nil])
         #expect(store.projects[0].isActive)
+        #expect(store.projects.map(\.samePort) == [false, false])
+        #expect(store.projects.map(\.extraForwards) == [[], []])
     }
 
     @Test func addHostIgnoresBlanksAndDuplicates() {
@@ -78,14 +93,18 @@ struct ProjectStoreTests {
         let store = ProjectStore(fileURL: fileURL)
         store.addHost("castle-black")
         store.projects = [
-            Project(name: "A", url: "https://localhost:4200", host: "castle-black", remotePort: 4201, isActive: true),
+            Project(
+                name: "A", url: "https://localhost:4200", host: "castle-black", remotePort: 4201,
+                extraForwards: [Forward(localPort: 10000), Forward(localPort: 10001, samePort: false, remotePort: 31544)],
+                isActive: true),
             Project(name: "B", url: "https://localhost:4300", host: "winterfell", remotePort: 4301, isActive: true),
         ]
 
         store.removeHost("castle-black")
 
         #expect(store.hosts == ["winterfell"])
-        #expect(store.projects[0].hasServer == false)
+        #expect(store.projects[0].isComplete == false)
+        #expect(store.projects[0].extraForwards.map(\.target) == [10000, nil])
         #expect(store.projects[0].isActive == false)
         #expect(store.projects[1].isActive)
     }

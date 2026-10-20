@@ -38,27 +38,32 @@ struct ProjectRow: View {
                     .toggleStyle(.switch)
                     .tint(.hodorLight)
                     .labelsHidden()
-                    .disabled(!project.hasServer || project.localPort == nil)
+                    .disabled(!project.isComplete)
             }
 
-            Picker("Server", selection: selection) {
-                Text("None").tag(ServerRef?.none)
-                // A selection that is hidden by the filter or gone from discovery stays visible at the top.
-                if let selected = selection.wrappedValue, !isListed(selected) {
-                    let server = discovered(selected)
-                    Text(label(host: selected.host, port: selected.port, server: server) + (server == nil ? " (not found)" : ""))
-                        .tag(ServerRef?.some(selected))
-                }
-                ForEach(groups) { group in
-                    Section(group.title) {
-                        ForEach(group.servers) { server in
-                            Text(group.isWorktree ? worktreeLabel(server) : label(port: server.port, server: server))
-                                .tag(ServerRef?.some(ServerRef(host: group.host, port: server.port)))
-                        }
+            let forwards = project.forwards
+            let picked = forwards.indices.filter { !forwards[$0].samePort }
+            ForEach(picked, id: \.self) { index in
+                if forwards.count == 1 {
+                    serverPicker(forwardAt: index)
+                } else {
+                    HStack {
+                        Text(String(forwards[index].localPort) + " →")
+                            .monospacedDigit()
+                            .frame(width: 56, alignment: .trailing)
+                        serverPicker(forwardAt: index)
                     }
                 }
             }
-            .labelsHidden()
+
+            // Same-port forwards still need a host. With a single host it's set when the project is saved.
+            if picked.isEmpty && (hosts.count > 1 || project.host.map(hosts.contains) != true) {
+                Picker("Host", selection: $project.host) {
+                    Text("None").tag(String?.none)
+                    ForEach(hosts, id: \.self) { Text($0).tag(String?.some($0)) }
+                }
+                .labelsHidden()
+            }
 
             // The closed picker only shows the item, so name its worktree below.
             if let worktree = selectedWorktree {
@@ -67,6 +72,11 @@ struct ProjectRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+            }
+
+            let samePorts = forwards.filter(\.samePort).map(\.localPort)
+            if !samePorts.isEmpty {
+                samePortLine(samePorts)
             }
 
             if case .failed(let message) = status {
@@ -96,17 +106,72 @@ struct ProjectRow: View {
         var port: Int
     }
 
-    private var selection: Binding<ServerRef?> {
+    /// Picked server of the forward at `index` in `project.forwards`.
+    private func selection(at index: Int) -> Binding<ServerRef?> {
         Binding(
             get: {
-                guard let host = project.host, let port = project.remotePort else { return nil }
+                let forwards = project.forwards
+                guard forwards.indices.contains(index), !forwards[index].samePort, let host = project.host,
+                    let port = forwards[index].remotePort
+                else { return nil }
                 return ServerRef(host: host, port: port)
             },
-            set: {
-                project.host = $0?.host
-                project.remotePort = $0?.port
-            }
+            set: { project.pick($0?.port, on: $0?.host, forwardAt: index) }
         )
+    }
+
+    private func serverPicker(forwardAt index: Int) -> some View {
+        let selection = selection(at: index)
+        return Picker("Server", selection: selection) {
+            Text("None").tag(ServerRef?.none)
+            // A selection that is hidden by the filter or gone from discovery stays visible at the top.
+            if let selected = selection.wrappedValue, !isListed(selected) {
+                let server = discovered(selected)
+                Text(label(host: selected.host, port: selected.port, server: server) + (server == nil ? " (not found)" : ""))
+                    .tag(ServerRef?.some(selected))
+            }
+            ForEach(groups) { group in
+                Section(group.title) {
+                    ForEach(group.servers) { server in
+                        Text(group.isWorktree ? worktreeLabel(server) : label(port: server.port, server: server))
+                            .tag(ServerRef?.some(ServerRef(host: group.host, port: server.port)))
+                    }
+                }
+            }
+        }
+        .labelsHidden()
+    }
+
+    /// "⇄ 10000  10001  10002 · same port". Ports nothing listens on remotely are dimmed and named below.
+    private func samePortLine(_ ports: [Int]) -> some View {
+        let missing = notListening(ports)
+        let list = ports.enumerated().reduce(Text("")) { text, item in
+            let port = Text(String(item.element))
+                .foregroundStyle(missing.contains(item.element) ? HierarchicalShapeStyle.tertiary : .primary)
+            return item.offset == 0 ? port : text + Text("  ") + port
+        }
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline) {
+                Image(systemName: "arrow.left.arrow.right")
+                list.monospacedDigit()
+                Spacer()
+                Text("same port").foregroundStyle(.secondary)
+            }
+            if !missing.isEmpty {
+                Text("nothing listening on " + missing.map { ":\($0)" }.joined(separator: ", "))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .font(.caption)
+    }
+
+    /// Ports of `ports` without a listener on the project's host. Empty until discovery has a result.
+    func notListening(_ ports: [Int]) -> [Int] {
+        guard let host = project.host, let result = discovery[host], result.error == nil,
+            !(result.isLoading && result.servers.isEmpty)
+        else { return [] }
+        let listening = Set(result.servers.map(\.port))
+        return ports.filter { !listening.contains($0) }
     }
 
     /// Servers of one worktree on one host, or the remaining listeners of a host (`isWorktree` false).
@@ -152,10 +217,16 @@ struct ProjectRow: View {
         return title
     }
 
-    /// Section title of the selected server, e.g. "app › feature+login". Nil when it's not in a worktree.
+    /// Section titles of the selected servers, e.g. "app › feature+login", each once. Nil when none is in a worktree.
     var selectedWorktree: String? {
-        guard let ref = selection.wrappedValue, let server = discovered(ref), server.isDevServer else { return nil }
-        return (hosts.count > 1 ? ref.host + "  ·  " : "") + worktreeTitle(server)
+        var titles: [String] = []
+        for index in project.forwards.indices {
+            guard let ref = selection(at: index).wrappedValue, let server = discovered(ref), server.isDevServer else { continue }
+            let title = worktreeTitle(server)
+            if !titles.contains(title) { titles.append(title) }
+        }
+        guard let host = project.host, !titles.isEmpty else { return nil }
+        return (hosts.count > 1 ? host + "  ·  " : "") + titles.joined(separator: ", ")
     }
 
     private func discovered(_ ref: ServerRef) -> DevServer? {

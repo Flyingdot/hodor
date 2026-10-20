@@ -51,19 +51,21 @@ public final class ProjectStore {
             var project = project
             project.host = nil
             project.remotePort = nil
+            project.extraForwards = project.extraForwards.map { Forward(localPort: $0.localPort, samePort: $0.samePort) }
             project.isActive = false
             return project
         }
         hosts.removeAll { $0 == host }
     }
 
-    /// Activates or deactivates a project. Activating turns off other projects on the same local port,
+    /// Activates or deactivates a project. Activating turns off other projects that share a local port with it,
     /// since only one tunnel can bind it.
     public func setActive(_ active: Bool, for id: UUID) {
         guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
         var updated = projects
-        if active, let port = updated[index].localPort {
-            for i in updated.indices where i != index && updated[i].localPort == port {
+        if active {
+            let ports = Set(updated[index].forwards.map(\.localPort))
+            for i in updated.indices where i != index && !ports.isDisjoint(with: updated[i].forwards.map(\.localPort)) {
                 updated[i].isActive = false
             }
         }
