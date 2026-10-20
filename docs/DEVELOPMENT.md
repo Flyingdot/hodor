@@ -96,6 +96,13 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   "Other listeners". Live: 26 of 39 listeners on winterfell remain, in two worktree sections; tunnel 4200
   restored on launch, HTTP 200. The open menu can't be rendered offscreen (SwiftUI fills it only while it
   tracks), so the grouping is checked through `ProjectRow.groups` in a test.
+- UI lag: toggling a tunnel or loading servers froze the popup for about half a second. `sample` showed the
+  main thread in `lstat`: `DevServer.repository`/`worktree`/`isMainCheckout` built `URL(fileURLWithPath:)` from
+  the remote paths, and without a directory hint Foundation stats them on the Mac, where `/home` is autofs. The
+  picker's `groups` does this for every server, several times per render, and every change re-renders all rows.
+  With `isDirectory: true`, a re-render of 3 projects with winterfell's servers went from ~520 ms to ~4 ms.
+  Live: tunnels 4200, 5001 and 4300 restored on launch, HTTP 200 on 4300 (nothing was listening on 4200 and 5001
+  on winterfell).
 
 ## Behaviour details
 

@@ -79,20 +79,26 @@ public struct DevServer: Hashable, Identifiable, Sendable {
     /// Repository name: the folder holding `.git`, or a bare repo's name without `.git`.
     public var repository: String? {
         guard let gitCommonDir else { return nil }
-        let url = URL(fileURLWithPath: gitCommonDir)
+        let url = Self.remoteURL(gitCommonDir)
         if url.lastPathComponent == ".git" { return url.deletingLastPathComponent().lastPathComponent }
         return url.deletingPathExtension().lastPathComponent
     }
 
     /// Folder name of the worktree.
     public var worktree: String? {
-        worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent }
+        worktreePath.map { Self.remoteURL($0).lastPathComponent }
     }
 
     /// Whether the worktree is the repository's main checkout rather than a linked worktree.
     public var isMainCheckout: Bool {
         guard let worktreePath, let gitCommonDir else { return false }
-        return URL(fileURLWithPath: gitCommonDir).deletingLastPathComponent().path == worktreePath
+        return Self.remoteURL(gitCommonDir).deletingLastPathComponent().path == worktreePath
+    }
+
+    /// URL of a directory on the remote host. Without the hint, Foundation stats the path on this Mac, which is
+    /// slow under `/home` (autofs) and ran on every render of the server picker.
+    private static func remoteURL(_ path: String) -> URL {
+        URL(fileURLWithPath: path, isDirectory: true)
     }
 
     /// `directory` relative to the worktree. Nil at the worktree's top level or outside a worktree.

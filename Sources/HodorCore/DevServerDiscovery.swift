@@ -77,7 +77,7 @@ public enum DevServerDiscovery {
             return title
         }
         if let script, let name = script.split(separator: "/").last {
-            let base = URL(fileURLWithPath: String(name)).deletingPathExtension().lastPathComponent
+            let base = URL(fileURLWithPath: String(name), isDirectory: false).deletingPathExtension().lastPathComponent
             if !base.isEmpty { return base }
         }
         return executable
