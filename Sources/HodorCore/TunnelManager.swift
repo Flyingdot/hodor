@@ -89,7 +89,7 @@ public final class TunnelManager {
         process.terminationHandler = { [weak self] process in
             let code = process.terminationStatus
             Task { @MainActor in
-                self?.processExited(id, processID, message: buffer.lastLine ?? "ssh exited with code \(code)")
+                self?.processExited(id, processID, message: buffer.message ?? "ssh exited with code \(code)")
             }
         }
 
@@ -129,7 +129,7 @@ public final class TunnelManager {
 }
 
 /// Collects stderr output from a background thread.
-private final class StderrBuffer: @unchecked Sendable {
+final class StderrBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private var text = ""
 
@@ -137,11 +137,15 @@ private final class StderrBuffer: @unchecked Sendable {
         lock.withLock { text += String(decoding: data, as: UTF8.self) }
     }
 
-    var lastLine: String? {
-        lock.withLock {
+    /// The `bind …` lines that name a busy port, since ssh ends those with a generic "Could not request local
+    /// forwarding.". Otherwise the last line.
+    var message: String? {
+        let lines = lock.withLock {
             text.split(whereSeparator: \.isNewline)
                 .map { $0.trimmingCharacters(in: .whitespaces) }
-                .last { !$0.isEmpty }
+                .filter { !$0.isEmpty }
         }
+        let bind = lines.filter { $0.hasPrefix("bind ") }
+        return bind.isEmpty ? lines.last : bind.joined(separator: "\n")
     }
 }
