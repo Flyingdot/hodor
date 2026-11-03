@@ -141,6 +141,9 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
 - One busy local port fails the whole project (`ExitOnForwardFailure`), and the error shows ssh's `bind …` line
   that names the port. Activating a project, or saving an active one, turns off every other project that shares
   any local port with it.
+- "Open at login" (footer checkbox) registers the app with `SMAppService.mainApp`. The state is kept by macOS, not
+  in the config, and is read again on every open, so a change in System Settings › Login Items shows up. If macOS
+  wants approval first, a link opens that settings page. Active tunnels come back on login like on any launch.
 
 ## Known limitations / ideas
 
@@ -149,4 +152,4 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
 - Host suggestions only read `~/.ssh/config` itself: `Include` files are not followed, and `Host` patterns
   (`*`, `?`, `!`) are skipped.
 - Discovery needs Linux (`ss`, `/proc`); macOS hosts would need an `lsof` fallback.
-- No launch-at-login yet (add the app to Login Items manually).
+- "Open at login" needs the installed app. The bare `swift run` binary has no app bundle to register.
