@@ -70,6 +70,18 @@ struct RenderTests {
         #expect(size.width == 420)
     }
 
+    @Test func loginItemNeedsApproval() throws {
+        let store = ProjectStore(fileURL: fileURL)
+        let view = ContentView(
+            store: store, tunnels: TunnelManager(), discovery: ["winterfell": HostServers(servers: Self.servers)],
+            discover: { _ in Self.servers },
+            loginItem: LoginItem(
+                status: .requiresApproval,
+                error: "The operation couldn't be completed. (SMAppServiceErrorDomain error 1.)"))
+        let size = try render(view, as: "content-login-item")
+        #expect(size.width == 420)
+    }
+
     @Test func oneHostUnreachable() throws {
         let store = ProjectStore(fileURL: fileURL)
         store.addHost("castle-black")

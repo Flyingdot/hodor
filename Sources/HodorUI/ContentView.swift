@@ -18,21 +18,26 @@ public struct ContentView: View {
     @State private var isAdding = false
     @State private var showHosts: Bool
     @State private var sshAliases: [String] = []
+    @State private var loginItem: LoginItem
 
     public init(store: ProjectStore, tunnels: TunnelManager) {
-        self.init(store: store, tunnels: tunnels, discovery: [:], discover: DevServerDiscovery.discover(host:))
+        self.init(
+            store: store, tunnels: tunnels, discovery: [:], discover: DevServerDiscovery.discover(host:),
+            loginItem: LoginItem())
     }
 
-    /// Tests pass fixed discovery results and a stub instead of ssh.
+    /// Tests pass fixed discovery results and a stub instead of ssh, and a fixed login item state.
     init(
         store: ProjectStore, tunnels: TunnelManager, discovery: [String: HostServers],
-        discover: @escaping @Sendable (String) async throws -> [DevServer], showHosts: Bool = false
+        discover: @escaping @Sendable (String) async throws -> [DevServer], showHosts: Bool = false,
+        loginItem: LoginItem = LoginItem(status: .notRegistered)
     ) {
         self.store = store
         self.tunnels = tunnels
         self.discover = discover
         _discovery = State(initialValue: discovery)
         _showHosts = State(initialValue: showHosts)
+        _loginItem = State(initialValue: loginItem)
     }
 
     private var isLoading: Bool {
@@ -57,10 +62,14 @@ public struct ContentView: View {
         .padding()
         .frame(width: 420)
         .tint(.hodorNight)
-        .task { await refreshAll() }
+        .task {
+            loginItem.refresh()
+            await refreshAll()
+        }
         // MenuBarExtra keeps the view alive between opens, so `.task` only runs once.
         // The popup becomes key each time it opens, and it's the app's only window.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            loginItem.refresh()
             guard !isLoading else { return }
             Task { await refreshAll() }
         }
@@ -126,9 +135,10 @@ public struct ContentView: View {
             Button("Add Project", systemImage: "plus") { isAdding = true }
                 .disabled(isAdding)
             Spacer()
-            LaunchAtLoginToggle()
+            LoginItemToggle(item: loginItem)
             Button("Quit") { NSApplication.shared.terminate(nil) }
         }
+        LoginItemNotice(item: loginItem)
     }
 
     private var header: some View {
