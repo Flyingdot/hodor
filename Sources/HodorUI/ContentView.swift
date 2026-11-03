@@ -126,6 +126,7 @@ public struct ContentView: View {
             Button("Add Project", systemImage: "plus") { isAdding = true }
                 .disabled(isAdding)
             Spacer()
+            LaunchAtLoginToggle()
             Button("Quit") { NSApplication.shared.terminate(nil) }
         }
     }
