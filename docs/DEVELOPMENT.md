@@ -111,6 +111,13 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   `row-same-port` and `form-forwards` added. The render helper lays out twice, since the form fills its fields in
   `onAppear`. Live: 43 tests pass, the four existing tunnels were restored from the old config, HTTP 200/200/302
   on 5001/4300/5100 (nothing listening on 4200 on winterfell). A multi-port project was not tried in the app.
+- Open at login: a footer checkbox registers the app with `SMAppService.mainApp` (`LoginItem`). The status is read
+  in `.task` and on every open, not in the view's init, since `ContentView` is rebuilt on every render. Tests pass a
+  fixed `LoginItem` state, so they never touch the system's login items. Render test `content-login-item` covers
+  the approval link and an error. The checkbox was not clicked in the installed app (the agent can't open the popup).
+  Live: 46 tests pass, the four tunnels were restored on launch (ssh listening on 4200, 4300, 5173, 5001), no HTTP
+  answer because nothing listened on their remote ports on winterfell. An earlier run hit sshd's
+  `Not allowed at this time` (per-source penalty) after a quick restart; it cleared on its own.
 
 ## Behaviour details
 
@@ -143,7 +150,8 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   any local port with it.
 - "Open at login" (footer checkbox) registers the app with `SMAppService.mainApp`. The state is kept by macOS, not
   in the config, and is read again on every open, so a change in System Settings › Login Items shows up. If macOS
-  wants approval first, a link opens that settings page. Active tunnels come back on login like on any launch.
+  wants approval first, the box stays checked (unchecking it unregisters) and a link below the footer opens that
+  settings page. Errors show there too. Active tunnels come back on login like on any launch.
 
 ## Known limitations / ideas
 
@@ -153,3 +161,5 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   (`*`, `?`, `!`) are skipped.
 - Discovery needs Linux (`ss`, `/proc`); macOS hosts would need an `lsof` fallback.
 - "Open at login" needs the installed app. The bare `swift run` binary has no app bundle to register.
+- `bundle.sh --install` replaces the ad-hoc-signed bundle. Whether the login item survives that was not checked;
+  if it stops working, uncheck and check "Open at login" again.

@@ -1,45 +1,78 @@
 import ServiceManagement
 import SwiftUI
 
-/// Checkbox that adds Hodor to the Login Items, so it starts with the Mac and restores the active tunnels.
-/// The state lives in the system, not in the config. It's read again on every open, since the user can also
+/// Whether Hodor is in the Login Items, so it starts with the Mac and restores the active tunnels.
+/// The state lives in the system, not in the config. `refresh()` reads it again, since the user can also
 /// change it in System Settings.
-struct LaunchAtLoginToggle: View {
-    @State private var status = SMAppService.mainApp.status
-    @State private var error: String?
+@MainActor @Observable
+final class LoginItem {
+    private(set) var status: SMAppService.Status
+    private(set) var error: String?
+    /// Nil in tests, which pass a fixed state instead.
+    private let service: SMAppService?
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Toggle("Open at login", isOn: Binding(get: { status == .enabled }, set: setEnabled))
-                .toggleStyle(.checkbox)
-                .help("Start Hodor when you log in. Active tunnels come back with it.")
-            if status == .requiresApproval {
-                Button("Allow in System Settings") { SMAppService.openSystemSettingsLoginItems() }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
-            if let error {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(Color.hodorWedge)
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            status = SMAppService.mainApp.status
-        }
+    init() {
+        service = .mainApp
+        status = .notRegistered
     }
 
-    private func setEnabled(_ enabled: Bool) {
+    init(status: SMAppService.Status, error: String? = nil) {
+        service = nil
+        self.status = status
+        self.error = error
+    }
+
+    /// Registered, though macOS may still wait for approval.
+    var isOn: Bool {
+        status == .enabled || status == .requiresApproval
+    }
+
+    func refresh() {
+        guard let service else { return }
+        status = service.status
+        error = nil
+    }
+
+    func setOn(_ on: Bool) {
+        guard let service else { return }
         do {
-            if enabled {
-                try SMAppService.mainApp.register()
+            if on {
+                try service.register()
             } else {
-                try SMAppService.mainApp.unregister()
+                try service.unregister()
             }
             error = nil
         } catch {
             self.error = error.localizedDescription
         }
-        status = SMAppService.mainApp.status
+        status = service.status
+    }
+}
+
+struct LoginItemToggle: View {
+    var item: LoginItem
+
+    var body: some View {
+        Toggle("Open at login", isOn: Binding(get: { item.isOn }, set: item.setOn))
+            .toggleStyle(.checkbox)
+            .help("Start Hodor when you log in. Active tunnels come back with it.")
+    }
+}
+
+/// The approval link or the last error, shown below the footer.
+struct LoginItemNotice: View {
+    var item: LoginItem
+
+    var body: some View {
+        if item.status == .requiresApproval {
+            Button("Allow Hodor in System Settings › Login Items") { SMAppService.openSystemSettingsLoginItems() }
+                .buttonStyle(.link)
+                .font(.caption)
+        }
+        if let error = item.error {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(Color.hodorWedge)
+        }
     }
 }
