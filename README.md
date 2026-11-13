@@ -37,6 +37,30 @@ Click the server icon in the menu to add or remove hosts. A host is anything `ss
 from `~/.ssh/config` or a hostname. All hosts are queried in parallel; an unreachable one shows its
 ssh error and doesn't block the others. Removing a host turns off the projects that used it.
 
+## Agents
+
+Coding agents can point projects at their own dev server, on this Mac or on any host, with `~/.hodor/hodor`:
+
+```sh
+~/.hodor/hodor projects                                # local URL, current target, status
+~/.hodor/hodor use 4300 --worktree "$PWD" --wait       # serve this worktree's dev server at localhost:4300
+~/.hodor/hodor status 4300 --wait                      # wait until the URL answers
+~/.hodor/hodor help
+```
+
+Hodor installs the script on this Mac and, over ssh, on every host. It talks to a socket in `~/.hodor` that is
+only accessible to you. On the hosts, that socket is forwarded back to the Mac with `ssh -R`, so the
+hosts can't reach the Mac in any other way. Agents can only change and toggle the projects you set up, never
+add or delete projects or hosts. **Pin** a project (its `⋯` menu) to keep agents off it. A project changed by an
+agent says so in its row until you pick a server yourself. Turn it all off with "Let agents steer Hodor" on the
+hosts page.
+
+To let your agents know about it, add something like this to their instructions (e.g. `~/.claude/CLAUDE.md` on
+each machine):
+
+> To make a dev server reachable at its usual URL on the user's Mac (e.g. https://localhost:4300), start it, then
+> run `~/.hodor/hodor use 4300 --worktree "$PWD" --wait`. `~/.hodor/hodor help` lists all commands.
+
 ## Configuration
 
 Hosts and projects are stored in `~/Library/Application Support/Hodor/config.json`. Without a config,

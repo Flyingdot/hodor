@@ -11,6 +11,7 @@ struct HostServers {
 public struct ContentView: View {
     @Bindable var store: ProjectStore
     var tunnels: TunnelManager
+    var links: ControlLinks
     private let discover: @Sendable (String) async throws -> [DevServer]
 
     @State private var discovery: [String: HostServers]
@@ -20,20 +21,21 @@ public struct ContentView: View {
     @State private var sshAliases: [String] = []
     @State private var loginItem: LoginItem
 
-    public init(store: ProjectStore, tunnels: TunnelManager) {
+    public init(store: ProjectStore, tunnels: TunnelManager, links: ControlLinks) {
         self.init(
-            store: store, tunnels: tunnels, discovery: [:], discover: DevServerDiscovery.discover(host:),
+            store: store, tunnels: tunnels, links: links, discovery: [:], discover: DevServerDiscovery.discover(host:),
             loginItem: LoginItem())
     }
 
     /// Tests pass fixed discovery results and a stub instead of ssh, and a fixed login item state.
     init(
-        store: ProjectStore, tunnels: TunnelManager, discovery: [String: HostServers],
+        store: ProjectStore, tunnels: TunnelManager, links: ControlLinks = ControlLinks(), discovery: [String: HostServers],
         discover: @escaping @Sendable (String) async throws -> [DevServer], showHosts: Bool = false,
         loginItem: LoginItem = LoginItem(status: .notRegistered)
     ) {
         self.store = store
         self.tunnels = tunnels
+        self.links = links
         self.discover = discover
         _discovery = State(initialValue: discovery)
         _showHosts = State(initialValue: showHosts)
@@ -50,7 +52,7 @@ public struct ContentView: View {
 
             if showHosts {
                 HostsView(
-                    store: store, discovery: discovery, suggestions: sshAliases,
+                    store: store, discovery: discovery, suggestions: sshAliases, agentLinks: links.statuses,
                     onAdd: { host in
                         store.addHost(host)
                         Task { await refresh(host) }

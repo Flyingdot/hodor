@@ -7,6 +7,8 @@ struct HostsView: View {
     var discovery: [String: HostServers]
     /// Aliases from ~/.ssh/config. Those already added are not shown.
     var suggestions: [String]
+    /// State of the link that lets agents on each host reach Hodor.
+    var agentLinks: [String: TunnelStatus] = [:]
     var onAdd: (String) -> Void
 
     @State private var newHost = ""
@@ -57,6 +59,10 @@ struct HostsView: View {
             Divider()
             Toggle("Show all listeners", isOn: Binding(get: { store.showAllServers }, set: { store.showAllServers = $0 }))
                 .help("Also list other users' processes and servers outside git worktrees.")
+            Toggle("Let agents steer Hodor", isOn: Binding(get: { store.agentControl }, set: { store.agentControl = $0 }))
+                .help(
+                    "Agents run ~/.hodor/hodor on this Mac or on a host to point projects at their dev servers. "
+                        + "Pinned projects stay as they are.")
         }
     }
 
@@ -73,9 +79,15 @@ struct HostsView: View {
                         .foregroundStyle(Color.hodorWedge)
                         .textSelection(.enabled)
                 } else {
-                    Text(caption(state, users: users))
+                    Text(caption(host, state, users: users))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+                if store.agentControl, case .failed(let message) = agentLinks[host] {
+                    Text("Agents can't reach Hodor: " + message)
+                        .font(.caption)
+                        .foregroundStyle(Color.hodorWedge)
+                        .textSelection(.enabled)
                 }
             }
             Spacer()
@@ -107,7 +119,7 @@ struct HostsView: View {
         return state.error == nil ? .hodorNight : .hodorWedge
     }
 
-    private func caption(_ state: HostServers?, users: Int) -> String {
+    private func caption(_ host: String, _ state: HostServers?, users: Int) -> String {
         var parts: [String] = []
         if let state, !state.isLoading {
             let count = state.servers.filter { store.showAllServers || $0.isDevServer }.count
@@ -117,6 +129,9 @@ struct HostsView: View {
         }
         if users > 0 {
             parts.append(users == 1 ? "used by 1 project" : "used by \(users) projects")
+        }
+        if store.agentControl, agentLinks[host] == .running {
+            parts.append("agents connected")
         }
         return parts.joined(separator: " · ")
     }

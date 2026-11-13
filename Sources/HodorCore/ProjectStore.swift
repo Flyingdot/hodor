@@ -7,6 +7,7 @@ struct Config: Codable {
     var host: String?
     var projects: [Project]
     var showAllServers: Bool?
+    var agentControl: Bool?
 }
 
 /// Persists the ssh hosts and project list as JSON in ~/Library/Application Support/Hodor.
@@ -17,6 +18,8 @@ public final class ProjectStore {
     public var projects: [Project] { didSet { save() } }
     /// Whether the server picker lists every listener, not just your processes inside git worktrees.
     public var showAllServers: Bool { didSet { save() } }
+    /// Whether agents can steer Hodor through `~/.hodor/hodor`, on this Mac and on the hosts.
+    public var agentControl: Bool { didSet { save() } }
     /// Called after every change, once it is saved.
     @ObservationIgnored public var onChange: (() -> Void)?
 
@@ -28,6 +31,7 @@ public final class ProjectStore {
         let legacyHost = config?.host ?? "winterfell"
         hosts = config?.hosts ?? [legacyHost]
         showAllServers = config?.showAllServers ?? false
+        agentControl = config?.agentControl ?? true
         projects = (config?.projects ?? []).map { project in
             var project = project
             if project.host == nil && project.remotePort != nil {
@@ -83,8 +87,8 @@ public final class ProjectStore {
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(Config(hosts: hosts, projects: projects, showAllServers: showAllServers)).write(
-                to: fileURL, options: .atomic)
+            let config = Config(hosts: hosts, projects: projects, showAllServers: showAllServers, agentControl: agentControl)
+            try encoder.encode(config).write(to: fileURL, options: .atomic)
         } catch {
             NSLog("Hodor: failed to save config: \(error)")
         }

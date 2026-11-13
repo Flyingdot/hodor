@@ -20,7 +20,7 @@ It's a personal tool, so keep it simple. Design decisions and behaviour details:
 ## Gotchas
 
 - Targets: `HodorCore` (models, store, ssh), `HodorUI` (views), `Hodor` (app entry, `AppModel`). Only `ContentView`'s
-  `init(store:tunnels:)` and `MenuBarIcon` are public. Tests use `@testable import`.
+  `init(store:tunnels:links:)` and `MenuBarIcon` are public. Tests use `@testable import`.
 - The app icon lives in `assets/AppIcon.svg`. After changing it, run `scripts/make-icon.sh` (needs Chrome) and commit
   the regenerated `assets/AppIcon.icns`. The menu bar glyphs and the header mark are drawn in code in
   `HodorUI/Brand.swift`, along with the brand colors.

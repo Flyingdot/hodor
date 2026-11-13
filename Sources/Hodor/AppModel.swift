@@ -6,9 +6,15 @@ import HodorCore
 final class AppModel {
     let store = ProjectStore()
     let tunnels = TunnelManager()
+    let links = ControlLinks()
+    private let server: ControlServer
     private var signalSources: [DispatchSourceSignal] = []
 
     init() {
+        let control = AgentControl(store: store, tunnels: tunnels)
+        server = ControlServer(path: AgentScript.socketPath) { args in await control.handle(args) }
+        // A closed pipe or socket must fail the write, not kill the app.
+        signal(SIGPIPE, SIG_IGN)
         // Quit cleanly on kill/Ctrl-C too, otherwise the ssh children outlive the app and keep the ports busy.
         for sig in [SIGTERM, SIGINT] {
             signal(sig, SIG_IGN)
@@ -21,12 +27,35 @@ final class AppModel {
         sync()
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification, object: nil, queue: .main
-        ) { [tunnels] _ in
-            MainActor.assumeIsolated { tunnels.stopAll() }
+        ) { [tunnels, links, server] _ in
+            MainActor.assumeIsolated {
+                tunnels.stopAll()
+                links.stopAll()
+                server.stop()
+            }
         }
     }
 
     private func sync() {
         tunnels.sync(projects: store.projects)
+        syncAgentControl()
+    }
+
+    /// Opens or closes the control socket and the links to the hosts, following the setting.
+    private func syncAgentControl() {
+        guard store.agentControl else {
+            links.stopAll()
+            server.stop()
+            return
+        }
+        if !server.isRunning {
+            do {
+                try AgentScript.installLocally()
+                try server.start()
+            } catch {
+                NSLog("Hodor: agent control unavailable: \(error)")
+            }
+        }
+        links.sync(hosts: store.hosts)
     }
 }

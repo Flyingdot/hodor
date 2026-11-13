@@ -23,6 +23,7 @@ running on `winterfell`, so switching between worktrees is one click instead of 
 | Discovery | `ssh <host> ss -Htlnp` + `/proc/<pid>/cwd` | Port plus worktree directory gives a useful label |
 | Persistence | JSON at `~/Library/Application Support/Hodor/config.json` | Easy to inspect and hand-edit |
 | Hosts | List of ssh hosts in the config (default `[winterfell]`), host stored per project next to `remotePort` | Projects on different machines at once; ssh config does the rest |
+| Agent control | `~/.hodor/hodor` (sh + curl) → HTTP on the Unix socket `~/.hodor/hodor.sock`. Hosts get the socket through one `ssh -N -R` per host | Agents run mostly on winterfell, Hodor on the Mac. Reusing ssh opens no port and needs no auth of its own. One script and protocol everywhere |
 
 ## Work packages
 
@@ -123,6 +124,18 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   where turning the project off couldn't release them. Tunnels now pass `-o ControlMaster=no -o ControlPath=none`;
   discovery still uses the shared connection. Live: tunnel 3000 → 3003 restored on launch in its own ssh process,
   still the same pid after 20 s, HTTP 200 over `http://` (the project's URL says `https`, the server speaks http).
+- Agent control: agents on the Mac and on the hosts steer Hodor with `~/.hodor/hodor` (see Decisions and Behaviour
+  details). New: `AgentControl` (commands), `ControlServer` (HTTP on a Unix socket, POSIX sockets), `ControlLinks`
+  (`ssh -R` per host), `AgentScript`, `Project.isPinned`/`agentChangedAt`. Tests run the real script against the
+  real socket. Render tests `row-agent` and `hosts-agents` added.
+  - Found in the live check: collecting discovery results in a `withTaskGroup` came back empty in the release build
+    only (debug and the stubbed tests were fine). Replaced with plain `Task`s. `swift test -c release -Xswiftc
+    -enable-testing` reproduces release-only issues.
+  - Also found by a test: worktrees nested in the main checkout matched both, so the innermost one wins now.
+  - Live: 63 tests pass. The installed app restored its 4 tunnels and started the link. On winterfell,
+    `~/.hodor/hodor projects/servers/status` answered from the Mac, `status --wait` timed out correctly (nothing
+    listened on winterfell:4300), and a bad command exited 1. No ssh survived quitting. The first launch hit sshd's
+    penalty after the many test connections and connected on retry. `use` was not run against the real config.
 
 ## Behaviour details
 
@@ -157,6 +170,22 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   in the config, and is read again on every open, so a change in System Settings › Login Items shows up. If macOS
   wants approval first, the box stays checked (unchecking it unregisters) and a link below the footer opens that
   settings page. Errors show there too. Active tunnels come back on login like on any launch.
+- Agent control (on by default, "Let agents steer Hodor" on the hosts page, `agentControl` in the config): on
+  launch Hodor writes `~/.hodor/hodor` and opens `~/.hodor/hodor.sock` (0600, folder 0700). Per host it installs
+  the same script over ssh, removes a stale socket (sshd won't replace one) and keeps
+  `ssh -N -R <host home>/.hodor/hodor.sock:<Mac socket>` running, retried every 5 s. The hosts page shows
+  "agents connected" or the link's ssh error.
+- The script sends one argument per line as the body of an HTTP POST and prints the text reply. It exits 0 on
+  success, 1 when Hodor rejects the command (HTTP 400) and 2 when the socket can't be reached.
+- Commands: `projects`, `servers`, `use`, `on`, `off`, `status`, `help`. A project is named by its URL's port or its
+  name. When several match (presets on the same port), the active one wins. Otherwise the command fails.
+  `use --worktree DIR` discovers all hosts and picks the listener in the innermost worktree that contains DIR (Claude
+  worktrees live inside the main checkout). With several listeners there it needs `--port`. `use` sets the URL's
+  forward, turns the project on (which turns off others on the same ports) and stamps `agentChangedAt`, shown in
+  the row as "Set by an agent …" until the user picks a server. `--wait` waits until the tunnel runs and the URL
+  answers any HTTP (self-signed certificates accepted).
+- Agents can't add or delete projects or hosts, pick servers for extra forwards, or touch pinned projects
+  (`isPinned`, "Pin" in the row menu).
 
 ## Known limitations / ideas
 
@@ -168,3 +197,9 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
 - "Open at login" needs the installed app. The bare `swift run` binary has no app bundle to register.
 - `bundle.sh --install` replaces the ad-hoc-signed bundle. Whether the login item survives that was not checked;
   if it stops working, uncheck and check "Open at login" again.
+- Each host gets one more ssh connection (the agent link) and one more at launch (installing the script). After
+  quick restarts, sshd's per-source penalty can refuse connections for a few seconds; everything retries.
+- `use` only sets the URL's forward. Extra forwards that pick a server have to be set in the app.
+- Any process running as you on a host can steer Hodor. The worst it can do is point one of your projects'
+  local ports at another port on a host you added.
+- A second Hodor (e.g. `swift run` next to the installed app) takes over `~/.hodor/hodor.sock` from the first.

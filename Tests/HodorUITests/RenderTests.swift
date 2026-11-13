@@ -141,6 +141,40 @@ struct RenderTests {
         #expect(size.height > 0)
     }
 
+    @Test func agentRows() throws {
+        let rows = VStack(alignment: .leading) {
+            ProjectRow(
+                project: .constant(
+                    Project(
+                        name: "App feature", url: "https://localhost:4200", host: "winterfell", remotePort: 3780,
+                        isActive: true, agentChangedAt: Date(timeIntervalSinceNow: -300))),
+                hosts: ["winterfell"], discovery: ["winterfell": HostServers(servers: Self.servers)], status: .running,
+                onToggle: { _ in }, onEdit: {}, onDelete: {})
+            Divider()
+            ProjectRow(
+                project: .constant(
+                    Project(name: "App main", url: "https://localhost:4300", host: "winterfell", remotePort: 4201, isPinned: true)),
+                hosts: ["winterfell"], discovery: ["winterfell": HostServers(servers: Self.servers)], status: .inactive,
+                onToggle: { _ in }, onEdit: {}, onDelete: {})
+        }
+        let size = try render(rows.padding().frame(width: 420), as: "row-agent")
+        #expect(size.height > 0)
+    }
+
+    @Test func hostsWithAgentLinks() throws {
+        let store = ProjectStore(fileURL: fileURL)
+        store.addHost("castle-black")
+        let view = HostsView(
+            store: store, discovery: ["winterfell": HostServers(servers: Self.servers), "castle-black": HostServers()],
+            suggestions: [],
+            agentLinks: [
+                "winterfell": .running,
+                "castle-black": .failed("remote port forwarding failed for listen path /home/dani/.hodor/hodor.sock"),
+            ], onAdd: { _ in })
+        let size = try render(view.padding().frame(width: 420), as: "hosts-agents")
+        #expect(size.height > 0)
+    }
+
     @Test func projectFormWithForwards() throws {
         let project = Project(
             name: "App + storage", url: "https://localhost:4200",

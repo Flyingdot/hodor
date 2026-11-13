@@ -17,7 +17,15 @@ struct ProjectRow: View {
             HStack(alignment: .firstTextBaseline) {
                 statusDot
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(project.name).fontWeight(.semibold)
+                    HStack(spacing: 4) {
+                        Text(project.name).fontWeight(.semibold)
+                        if project.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .help("Pinned: agents can't change this project.")
+                        }
+                    }
                     if let url = URL(string: project.url) {
                         Link(project.url, destination: url).font(.caption)
                     } else {
@@ -27,6 +35,7 @@ struct ProjectRow: View {
                 Spacer()
                 Menu {
                     Button("Edit", action: onEdit)
+                    Button(project.isPinned ? "Unpin" : "Pin (keep agents off)") { project.isPinned.toggle() }
                     Button("Delete", role: .destructive, action: onDelete)
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -77,6 +86,16 @@ struct ProjectRow: View {
                     .truncationMode(.middle)
             }
 
+            if let date = project.agentChangedAt {
+                Label {
+                    Text("Set by an agent ") + Text(date, format: .relative(presentation: .named))
+                } icon: {
+                    Image(systemName: "sparkles")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             let samePorts = forwards.filter(\.samePort).map(\.localPort)
             if !samePorts.isEmpty {
                 samePortLine(samePorts)
@@ -116,7 +135,12 @@ struct ProjectRow: View {
                 let forwards = project.forwards
                 return forwards.indices.contains(index) ? ref(of: forwards[index]) : nil
             },
-            set: { project.pick($0?.port, on: $0?.host, forwardAt: index) }
+            set: {
+                var updated = project
+                updated.pick($0?.port, on: $0?.host, forwardAt: index)
+                updated.agentChangedAt = nil
+                project = updated
+            }
         )
     }
 

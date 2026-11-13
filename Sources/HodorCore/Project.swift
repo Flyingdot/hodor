@@ -15,10 +15,14 @@ public struct Project: Codable, Identifiable, Hashable, Sendable {
     /// Ports forwarded in addition to the URL's port.
     public var extraForwards: [Forward]
     public var isActive: Bool
+    /// Pinned by the user: agents can't change or toggle the project.
+    public var isPinned: Bool
+    /// When an agent last pointed the project at a server. Cleared when the user picks one.
+    public var agentChangedAt: Date?
 
     public init(
         id: UUID = UUID(), name: String, url: String, host: String? = nil, remotePort: Int? = nil, samePort: Bool = false,
-        extraForwards: [Forward] = [], isActive: Bool = false
+        extraForwards: [Forward] = [], isActive: Bool = false, isPinned: Bool = false, agentChangedAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -28,9 +32,11 @@ public struct Project: Codable, Identifiable, Hashable, Sendable {
         self.samePort = samePort
         self.extraForwards = extraForwards
         self.isActive = isActive
+        self.isPinned = isPinned
+        self.agentChangedAt = agentChangedAt
     }
 
-    /// Configs written before extra forwards have neither `samePort` nor `extraForwards`.
+    /// Configs written before extra forwards have neither `samePort` nor `extraForwards`. Older ones have no pin.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -41,6 +47,8 @@ public struct Project: Codable, Identifiable, Hashable, Sendable {
         samePort = try container.decodeIfPresent(Bool.self, forKey: .samePort) ?? false
         extraForwards = try container.decodeIfPresent([Forward].self, forKey: .extraForwards) ?? []
         isActive = try container.decode(Bool.self, forKey: .isActive)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        agentChangedAt = try container.decodeIfPresent(Date.self, forKey: .agentChangedAt)
     }
 
     /// The URL's port first, then the extra forwards. Without a port in the URL, only the extra forwards.

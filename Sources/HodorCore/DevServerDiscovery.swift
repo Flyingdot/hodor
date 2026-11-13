@@ -84,16 +84,22 @@ public enum DevServerDiscovery {
     }
 
     /// Runs a process to completion and returns exit status, stdout and stderr. Blocks; call off the main thread.
-    private static func run(_ executable: String, _ arguments: [String]) throws -> (Int32, String, String) {
+    /// `input` is written to stdin and must be small (it's written before reading the output).
+    static func run(_ executable: String, _ arguments: [String], input: Data? = nil) throws -> (Int32, String, String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
-        process.standardInput = FileHandle.nullDevice
+        let stdin = Pipe()
+        process.standardInput = input == nil ? FileHandle.nullDevice : stdin
         let out = Pipe()
         let err = Pipe()
         process.standardOutput = out
         process.standardError = err
         try process.run()
+        if let input {
+            try stdin.fileHandleForWriting.write(contentsOf: input)
+            try stdin.fileHandleForWriting.close()
+        }
         // Read stderr concurrently so neither pipe can fill up and block the child.
         nonisolated(unsafe) var errData = Data()
         let group = DispatchGroup()
