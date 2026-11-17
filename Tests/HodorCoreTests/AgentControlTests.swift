@@ -207,6 +207,7 @@ struct ControlServerTests {
         let args = ControlLinks.forwardArguments(host: "winterfell", remoteSocket: "/home/d/.hodor/hodor.sock", localSocket: "/l.sock")
         #expect(args.suffix(3) == ["-R", "/home/d/.hodor/hodor.sock:/l.sock", "winterfell"])
         #expect(args.contains("ExitOnForwardFailure=yes"))
+        #expect(args.contains("ControlMaster=no") && args.contains("ControlPath=none"))
     }
 
     private func run(_ script: URL, socket: String, _ args: [String]) throws -> (status: Int32, stdout: String, stderr: String) {

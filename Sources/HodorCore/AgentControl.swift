@@ -51,7 +51,8 @@ public final class AgentControl {
           hodor servers [--host H] [--all]   List dev servers (your processes in git worktrees) on the hosts.
           hodor use P --worktree DIR [--port N] [--wait]
                                              Point project P at the dev server running in DIR's git worktree and turn
-                                             it on. Add --port when the worktree has several servers.
+                                             it on. Add --port N, the port your server listens on: worktrees
+                                             usually have other listeners too, such as the agent itself.
           hodor use P --port N [--host H] [--wait]
                                              Point project P at port N on its host and turn it on.
           hodor on P / hodor off P           Turn project P on or off.
@@ -60,7 +61,7 @@ public final class AgentControl {
 
         P is the project's local port (4300) or its name. Turning a project on turns off other projects on the same
         local port. Projects the user pinned can't be changed. Projects and hosts are set up by the user in Hodor.
-        Example: hodor use 4300 --worktree "$PWD" --wait
+        Example: hodor use 4300 --worktree "$PWD" --port 4311 --wait
         """
 
     public func handle(_ args: [String]) async -> Reply {

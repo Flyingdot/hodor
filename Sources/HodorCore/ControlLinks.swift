@@ -74,9 +74,11 @@ public final class ControlLinks {
         return home
     }
 
+    /// Connection sharing is off, like for the tunnels: a master would take the forward over and ssh would exit 0.
     nonisolated static func forwardArguments(host: String, remoteSocket: String, localSocket: String) -> [String] {
         [
             "-N", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+            "-o", "ControlMaster=no", "-o", "ControlPath=none",
             "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
             "-R", "\(remoteSocket):\(localSocket)", host,
         ]
