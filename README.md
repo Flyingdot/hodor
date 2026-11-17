@@ -43,7 +43,7 @@ Coding agents can point projects at their own dev server, on this Mac or on any 
 
 ```sh
 ~/.hodor/hodor projects                                # local URL, current target, status
-~/.hodor/hodor use 4300 --worktree "$PWD" --wait       # serve this worktree's dev server at localhost:4300
+~/.hodor/hodor use 4300 --worktree "$PWD" --port 4311 --wait   # serve this worktree's :4311 at localhost:4300
 ~/.hodor/hodor status 4300 --wait                      # wait until the URL answers
 ~/.hodor/hodor help
 ```
@@ -55,11 +55,17 @@ add or delete projects or hosts. **Pin** a project (its `⋯` menu) to keep agen
 agent says so in its row until you pick a server yourself. Turn it all off with "Let agents steer Hodor" on the
 hosts page.
 
-To let your agents know about it, add something like this to their instructions (e.g. `~/.claude/CLAUDE.md` on
-each machine):
+To teach your agents when and how to use it, install the [`hodor` skill](skills/hodor/SKILL.md) on each machine
+they run on (the Mac and every host). It uses the [skills CLI](https://github.com/vercel-labs/skills), which needs
+Node.js 22.20 or later:
 
-> To make a dev server reachable at its usual URL on the user's Mac (e.g. https://localhost:4300), start it, then
-> run `~/.hodor/hodor use 4300 --worktree "$PWD" --wait`. `~/.hodor/hodor help` lists all commands.
+```sh
+npx skills add Flyingdot/hodor --skill hodor -g -a claude-code -y   # into ~/.claude/skills; leave out -a to pick agents
+npx skills update -g                                                # after the skill changes
+```
+
+The skill describes the workflow and leaves the exact syntax to `~/.hodor/hodor help`, so it rarely needs
+updating. The CLI sends anonymous usage data unless `DISABLE_TELEMETRY=1` is set.
 
 ## Configuration
 

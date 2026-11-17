@@ -136,6 +136,13 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
     `~/.hodor/hodor projects/servers/status` answered from the Mac, `status --wait` timed out correctly (nothing
     listened on winterfell:4300), and a bad command exited 1. No ssh survived quitting. The first launch hit sshd's
     penalty after the many test connections and connected on retry. `use` was not run against the real config.
+  - Rebased onto the ControlMaster fix: the `-R` link passes `ControlMaster=no`/`ControlPath=none` like the tunnels.
+    Before, a build from `main` had replaced the installed app, and its socket was gone.
+  - `use --worktree` from winterfell was ambiguous in practice: Claude Code listens on a port in its worktree too.
+    The help, README and skill now always pass `--port`. The real `use` with `--port` is still to be run.
+- Skill: `skills/hodor/SKILL.md` teaches agents the workflow and leaves the syntax to `hodor help`. Installed per
+  machine with `npx skills add Flyingdot/hodor --skill hodor -g -a claude-code -y` (`--skill` is needed because the
+  CLI also finds `.claude/skills/live-check`). Checked with `--list` and an install into a temporary `$HOME`.
 
 ## Behaviour details
 
@@ -203,3 +210,4 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
 - Any process running as you on a host can steer Hodor. The worst it can do is point one of your projects'
   local ports at another port on a host you added.
 - A second Hodor (e.g. `swift run` next to the installed app) takes over `~/.hodor/hodor.sock` from the first.
+- Agents listen in their own worktree (Claude Code does), so `use --worktree` almost always needs `--port`.
