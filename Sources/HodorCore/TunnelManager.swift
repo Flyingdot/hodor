@@ -17,9 +17,11 @@ public final class TunnelManager {
             var remote: Int
         }
 
+        /// Connection sharing is off, so each tunnel owns its ssh process and its ports.
         var arguments: [String] {
             [
                 "-N", "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+                "-o", "ControlMaster=no", "-o", "ControlPath=none",
                 "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
             ] + ports.flatMap { ["-L", "\($0.local):localhost:\($0.remote)"] } + [host]
         }

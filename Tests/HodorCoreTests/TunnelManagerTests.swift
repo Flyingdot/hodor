@@ -79,4 +79,14 @@ struct TunnelManagerTests {
             arguments.split(separator: "-L").dropFirst().map { $0.first }
                 == ["4200:localhost:4201", "10000:localhost:10000", "10001:localhost:31544"])
     }
+
+    /// With `ControlMaster auto` in `~/.ssh/config`, ssh would hand the forwards to a shared master and exit 0.
+    @Test func neverUsesAControlMaster() throws {
+        let project = Project(name: "A", url: "https://localhost:4200", host: "winterfell", remotePort: 4201)
+        let options = try #require(TunnelManager.Spec(project)).arguments.split(separator: "-o").dropFirst()
+            .compactMap { $0.first }
+
+        #expect(options.contains("ControlMaster=no"))
+        #expect(options.contains("ControlPath=none"))
+    }
 }

@@ -118,6 +118,11 @@ WP2 and WP3 ran as sub-agents in parallel with WP4.
   Live: 46 tests pass, the four tunnels were restored on launch (ssh listening on 4200, 4300, 5173, 5001), no HTTP
   answer because nothing listened on their remote ports on winterfell. An earlier run hit sshd's
   `Not allowed at this time` (per-source penalty) after a quick restart; it cleared on its own.
+- "ssh exited with code 0": with `ControlMaster auto` in `~/.ssh/config` and a master already open, `ssh -N -L`
+  hands its forwards to the master and exits 0. Hodor retried every 5 s, and the ports stayed with the master,
+  where turning the project off couldn't release them. Tunnels now pass `-o ControlMaster=no -o ControlPath=none`;
+  discovery still uses the shared connection. Live: tunnel 3000 → 3003 restored on launch in its own ssh process,
+  still the same pid after 20 s, HTTP 200 over `http://` (the project's URL says `https`, the server speaks http).
 
 ## Behaviour details
 
